@@ -2,7 +2,7 @@ import click
 import datetime
 import json
 import os
-from utils import last_modified_file
+from py_cli.utils import last_modified_file
 
 
 ignore_files = ['.DS_Store']

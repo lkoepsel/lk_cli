@@ -6,7 +6,7 @@ import re
 import xxhash
 from multiprocessing import Pool
 from functools import partial
-from utils import last_modified_file
+from py_cli.utils import last_modified_file
 
 dot_file = re.compile(r'^\.')
 BLOCKSIZE = 1048576

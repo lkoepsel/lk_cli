@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='py_cli',
-    version='0.1.5',
+    version='0.1.6',
     # This tells setuptools to include any directories, and subdirectories,
     # which include an __init__.py file
     packages=find_packages('py_cli'),

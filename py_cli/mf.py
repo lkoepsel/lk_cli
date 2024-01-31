@@ -1,5 +1,5 @@
 import click
-from utils import hash_folder
+from py_cli.utils import hash_folder
 
 
 BLOCKSIZE = 1048576
