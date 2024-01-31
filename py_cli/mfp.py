@@ -15,13 +15,22 @@ def mfp(folder1, folder2):
     folder1_hashes = hash_folder_mp(folder1)
     folder2_hashes = hash_folder_mp(folder2)
 
+    missing_in_folder1 = []
+    missing_in_folder2 = []
+
     # Comparing the folders
-    click.echo(f"Missing in {folder2}")
     for filehash, relpath in folder1_hashes.items():
         if filehash not in folder2_hashes:
-            print(f"{relpath}")
+            missing_in_folder2.append(relpath)
 
-    click.echo(f"Missing in {folder1}")
+    click.echo(f"Missing in {folder2}")
+    for file in missing_in_folder2:
+        click.echo(f"{file}")
+
     for filehash, relpath in folder2_hashes.items():
         if filehash not in folder1_hashes:
-            print(f"{relpath}")
+            missing_in_folder1.append(relpath)
+
+    click.echo(f"Missing in {folder1}")
+    for file in missing_in_folder1:
+        click.echo(f"{file}")
