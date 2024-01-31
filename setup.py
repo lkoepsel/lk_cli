@@ -12,10 +12,10 @@ setup(
     ],
     entry_points={
         'console_scripts': [
-            'mf = mf:mf',
-            'mfp = mfp:mf',
-            'hw = hw:hw',
-            'ch = ch:ch',
+            'mf = py_cli.mf:mf',
+            'mfp = py_cli.mfp:mf',
+            'hw = py_cli.hw:hw',
+            'ch = py_cli.ch:ch',
         ],
     },
     # Metadata
