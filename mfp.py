@@ -6,7 +6,7 @@ from utils import hash_folder_mp
 @click.version_option("0.1", prog_name="mfp")
 @click.argument('folder1', type=click.Path(exists=True, file_okay=False))
 @click.argument('folder2', type=click.Path(exists=True, file_okay=False))
-def mf(folder1, folder2):
+def mfp(folder1, folder2):
     """
     Compare two folders using hashes. Uses multiprocessing and
     xxHash64 for speed.
