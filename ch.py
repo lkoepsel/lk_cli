@@ -15,7 +15,7 @@ def format_timestamp(timestamp):
 
 
 @click.command()
-@click.version_option("0.4", prog_name="ch")
+@click.version_option("0.1", prog_name="ch")
 @click.argument('folder', type=click.Path(exists=True, file_okay=False))
 def ch(folder):
     changed_file = last_modified_file(folder)

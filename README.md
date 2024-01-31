@@ -10,7 +10,7 @@ A python package to provide utilities for finding missing files.
 ### 1. Install from GitHub
 
 ```bash
-pip install git+https://github.com/lkoepsel/CoolTerm_pip#egg=CoolTerm
+pip install git+https://github.com/lkoepsel/py_cli#egg=py_cli
 ```
 
 ### 2. 

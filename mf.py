@@ -6,7 +6,7 @@ BLOCKSIZE = 1048576
 
 
 @click.command()
-@click.version_option("0.2", prog_name="mf")
+@click.version_option("0.1", prog_name="mf")
 @click.argument('folder1', type=click.Path(exists=True, file_okay=False))
 @click.argument('folder2', type=click.Path(exists=True, file_okay=False))
 def mf(folder1, folder2):

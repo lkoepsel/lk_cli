@@ -60,7 +60,7 @@ def hash_hashes(hashes):
 
 
 @click.command()
-@click.version_option("0.3", prog_name="hw")
+@click.version_option("0.1", prog_name="hw")
 @click.argument('folder', type=click.Path(exists=True, file_okay=False))
 def hw(folder):
     """
