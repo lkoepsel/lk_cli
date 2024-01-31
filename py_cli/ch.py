@@ -16,19 +16,21 @@ def format_timestamp(timestamp):
 
 @click.command()
 @click.version_option("0.1", prog_name="ch")
-@click.argument('folder', type=click.Path(exists=True, file_okay=False))
-def ch(folder):
-    changed_file = last_modified_file(folder)
+@click.argument('folders', nargs=-1,
+                type=click.Path(exists=True, file_okay=False))
+def ch(folders):
+    for folder in folders:
+        changed_file = last_modified_file(folder)
 
-    # Read and process the JSON file
-    try:
-        with open(os.path.join(folder, '.hash.json'), 'r') as file:
-            data = json.load(file)
+        # Read and process the JSON file
+        try:
+            with open(os.path.join(folder, '.hash.json'), 'r') as file:
+                data = json.load(file)
 
-            if changed_file[0] > data['last_modified_file_date']:
-                if changed_file[1] != '.hash.json':
-                    click.echo(
-                        f"{changed_file[1]} has changed, since hash")
+                if changed_file[0] > data['last_modified_file_date']:
+                    if changed_file[1] != '.hash.json':
+                        click.echo(
+                            f"{changed_file[1]} has changed, since hash")
 
-    except Exception as e:
-        print(f"Error occurred: {e}")
+        except Exception as e:
+            print(f"Error occurred: {e}")

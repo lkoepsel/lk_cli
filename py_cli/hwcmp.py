@@ -1,36 +1,21 @@
+import click
+from datetime import datetime
 import json
 import os
 import re
 import xxhash
 from multiprocessing import Pool
 from functools import partial
-
+from py_cli.utils import last_modified_file
 
 dot_file = re.compile(r'^\.')
-CORES = 8
 BLOCKSIZE = 1048576
+CORES = 8
 
 
 def write_json(folder, name, dict):
     with open(os.path.join(folder, name), 'w') as hash_file:
         json.dump(dict, hash_file, indent=4)
-
-
-# Function returns name and date of file last modified
-def last_modified_file(root_folder):
-    last_modified_time = 0
-    last_modified_file = None
-
-    for root, dirs, files in os.walk(root_folder):
-        for file in files:
-            file_path = os.path.join(root, file)
-            modification_time = os.path.getmtime(file_path)
-
-            if modification_time > last_modified_time:
-                last_modified_time = modification_time
-                last_modified_file = file
-
-    return [last_modified_time, last_modified_file]
 
 
 def hash_file(filepath):
@@ -55,19 +40,6 @@ def process_file(root, folder_path, file):
 def hash_folder(folder_path):
     """Generate hashes for all files in a folder."""
     hashes = {}
-    for root, _, files in os.walk(folder_path):
-        for file in files:
-            if not dot_file.match(file):
-                filepath = os.path.join(root, file)
-                relpath = os.path.relpath(filepath, folder_path)
-                file_hash = hash_file(filepath)
-                hashes[file_hash] = relpath
-    return hashes
-
-
-def hash_folder_mp(folder_path):
-    """Generate hashes for all files in a folder."""
-    hashes = {}
     with Pool(CORES) as pool:
         for root, _, files in os.walk(folder_path):
             results = pool.map(partial(process_file, root, folder_path), files)
@@ -85,3 +57,26 @@ def hash_hashes(hashes):
         hasher.update(hash_text.encode('utf-8'))
     hash_of_folder = hasher.hexdigest()
     return(hash_of_folder)
+
+
+@click.command()
+@click.version_option("0.1", prog_name="hw")
+@click.argument('folder', multiple=True,
+                type=click.Path(exists=True, file_okay=False))
+def hw(folder):
+    """
+    Write hash of each file in folder to a hashes.json
+    file in folder. Uses multiprocessing and xxHash64 for speed.
+
+    """
+    folder_hashes, folder_hash = hash_folder(folder)
+    write_json(folder, '.hashes.json', folder_hashes)
+
+    hash = {}
+    hash[folder] = folder_hash
+    hash['folder_last_modified_date'] = os.path.getmtime(folder)
+    last_file = last_modified_file(folder)
+    hash['last_modified_file'] = last_file[1]
+    hash['last_modified_file_date'] = last_file[0]
+    hash['last_hash_date'] = datetime.now().timestamp()
+    write_json(folder, '.hash.json', hash)
