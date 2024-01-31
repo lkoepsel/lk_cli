@@ -1,12 +1,7 @@
 import click
 from datetime import datetime
 import os
-import re
 from py_cli.utils import last_modified_file, hash_folder_mp, write_json
-
-dot_file = re.compile(r'^\.')
-BLOCKSIZE = 1048576
-CORES = 8
 
 
 @click.command()
