@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='py_cli',
-    version='0.1.2',
+    version='0.1.3',
     # This tells setuptools to include any directories, and subdirectories,
     # which include an __init__.py file
     packages=find_packages(),
@@ -13,7 +13,7 @@ setup(
     entry_points={
         'console_scripts': [
             'mf = py_cli.mf:mf',
-            'mfp = py_cli.mfp:mf',
+            'mfp = py_cli.mfp:mfp',
             'hw = py_cli.hw:hw',
             'ch = py_cli.ch:ch',
         ],
