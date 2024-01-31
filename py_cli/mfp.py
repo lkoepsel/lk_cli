@@ -1,5 +1,5 @@
 import click
-from utils import hash_folder_mp
+from py_cli.utils import hash_folder_mp
 
 
 @click.command()
