@@ -28,7 +28,7 @@ def last_modified_file(root_folder):
 
             if modification_time > last_modified_time:
                 last_modified_time = modification_time
-                last_modified_file = file
+                last_modified_file = file_path
 
     return [last_modified_time, last_modified_file]
 

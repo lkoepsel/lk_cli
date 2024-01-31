@@ -28,7 +28,7 @@ def ch(folders):
                 data = json.load(file)
 
                 if changed_file[0] > data['last_modified_file_date']:
-                    if changed_file[1] != '.hash.json':
+                    if os.path.basename(changed_file[1]) != '.hash.json':
                         click.echo(
                             f"{changed_file[1]} has changed, since hash")
 
