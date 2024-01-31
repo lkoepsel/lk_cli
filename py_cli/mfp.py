@@ -23,14 +23,16 @@ def mfp(folder1, folder2):
         if filehash not in folder2_hashes:
             missing_in_folder2.append(relpath)
 
-    click.echo(f"Missing in {folder2}")
-    for file in missing_in_folder2:
-        click.echo(f"{file}")
+    if len(missing_in_folder2) > 0:
+        click.echo(f"Missing in {folder2}")
+        for file in missing_in_folder2:
+            click.echo(f"{file}")
 
     for filehash, relpath in folder2_hashes.items():
         if filehash not in folder1_hashes:
             missing_in_folder1.append(relpath)
 
-    click.echo(f"Missing in {folder1}")
-    for file in missing_in_folder1:
-        click.echo(f"{file}")
+    if len(missing_in_folder2) > 0:
+        click.echo(f"Missing in {folder1}")
+        for file in missing_in_folder1:
+            click.echo(f"{file}")
