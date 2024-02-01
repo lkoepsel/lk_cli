@@ -19,18 +19,19 @@ def format_timestamp(timestamp):
 @click.argument('folders', nargs=-1,
                 type=click.Path(exists=True, file_okay=False))
 def ch(folders):
-    for folder in folders:
-        changed = last_modified_file(folder)
+    with click.progressbar(folders) as progressbar:
+        for folder in progressbar:
+            changed = last_modified_file(folder)
 
-        # Read and process the JSON file
-        try:
-            with open(os.path.join(folder, '.hash.json'), 'r') as file:
-                data = json.load(file)
+            # Read and process the JSON file
+            try:
+                with open(os.path.join(folder, '.hash.json'), 'r') as file:
+                    data = json.load(file)
 
-                if changed[0] > data['last_modified_file_date']:
-                    if os.path.basename(changed[1]) not in ignore_files:
-                        click.echo(
-                            f"{changed[1]} has changed, since hash")
+                    if changed[0] > data['last_modified_file_date']:
+                        if os.path.basename(changed[1]) not in ignore_files:
+                            click.echo(
+                                f"{changed[1]} has changed, since hash")
 
-        except Exception as e:
-            print(f"Error occurred: {e}")
+            except Exception as e:
+                print(f"Error occurred: {e}")

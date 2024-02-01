@@ -14,15 +14,16 @@ def hw(folders):
     file in folder. Uses multiprocessing and xxHash64 for speed.
 
     """
-    for folder in folders:
-        folder_hashes, folder_hash = hash_folder_mp(folder)
-        write_json(folder, '.hashes.json', folder_hashes)
+    with click.progressbar(folders) as progressbar:
+        for folder in progressbar:
+            folder_hashes, folder_hash = hash_folder_mp(folder)
+            write_json(folder, '.hashes.json', folder_hashes)
 
-        hash = {}
-        hash[folder] = folder_hash
-        hash['folder_last_modified_date'] = os.path.getmtime(folder)
-        last_file = last_modified_file(folder)
-        hash['last_modified_file'] = last_file[1]
-        hash['last_modified_file_date'] = last_file[0]
-        hash['last_hash_date'] = datetime.now().timestamp()
-        write_json(folder, '.hash.json', hash)
+            hash = {}
+            hash[folder] = folder_hash
+            hash['folder_last_modified_date'] = os.path.getmtime(folder)
+            last_file = last_modified_file(folder)
+            hash['last_modified_file'] = last_file[1]
+            hash['last_modified_file_date'] = last_file[0]
+            hash['last_hash_date'] = datetime.now().timestamp()
+            write_json(folder, '.hash.json', hash)
