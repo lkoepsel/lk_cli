@@ -15,7 +15,7 @@ def format_timestamp(timestamp):
 
 
 @click.command()
-@click.version_option("0.1", prog_name="ch")
+@click.version_option("0.4", prog_name="ch")
 @click.argument('folders', nargs=-1,
                 type=click.Path(exists=True, file_okay=False))
 def ch(folders):

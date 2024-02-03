@@ -5,7 +5,7 @@ from py_cli.utils import last_modified_file, hash_folder_mp, write_json
 
 
 @click.command()
-@click.version_option("0.1", prog_name="hw")
+@click.version_option("0.4", prog_name="hw")
 @click.argument('folders', nargs=-1,
                 type=click.Path(exists=True, file_okay=False))
 def hw(folders):

@@ -4,7 +4,7 @@ from py_cli.utils import get_folders, read_json
 
 
 @click.command()
-@click.version_option("0.1", prog_name="fhc")
+@click.version_option("0.4", prog_name="fhc")
 @click.argument('folder1', type=click.Path(exists=True, file_okay=False))
 @click.argument('folder2', type=click.Path(exists=True, file_okay=False))
 def fhc(folder1, folder2):
