@@ -85,3 +85,19 @@ def hash_hashes(hashes):
         hasher.update(hash_text.encode('utf-8'))
     hash_of_folder = hasher.hexdigest()
     return(hash_of_folder)
+
+
+def read_json(folder):
+    with open(os.path.join(folder, '.hash.json'), 'r') as hash_file:
+        return(json.load(hash_file))
+
+
+def get_folders(folder):
+    subfolders = []
+    for root, dirs, files in os.walk(folder, topdown=True):
+        for directory in dirs:
+            if os.path.isdir(os.path.join(root, directory)):
+                if not dot_file.match(os.path.join(root, directory)):
+                    subfolders.append(directory)
+        break
+    return(subfolders)
