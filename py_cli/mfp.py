@@ -18,7 +18,6 @@ def mfp(folder1, folder2):
     missing_in_folder1 = []
     missing_in_folder2 = []
 
-    click.echo(f"{type(folder1_hashes[0])=} {type(folder2_hashes[0])=}")
     # Comparing the folders with progress bar for folder1
     with click.progressbar(folder1_hashes[0].items(),
                            label=f"Processing {folder1}") as bar:
