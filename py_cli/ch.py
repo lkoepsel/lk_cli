@@ -19,6 +19,9 @@ def format_timestamp(timestamp):
 @click.argument('folders', nargs=-1,
                 type=click.Path(exists=True, file_okay=False))
 def ch(folders):
+    '''
+    ch: check hash - read existing hash.json file and confirm results of file
+    '''
     with click.progressbar(folders) as progressbar:
         for folder in progressbar:
             changed = last_modified_file(folder)
