@@ -61,7 +61,7 @@ def hash_folder(folder_path):
                 filepath = os.path.join(root, file)
                 relpath = os.path.relpath(filepath, folder_path)
                 file_hash = hash_file(filepath)
-                hashes[file_hash] = relpath
+                hashes[file_hash] = filepath
     return hashes
 
 

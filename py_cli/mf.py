@@ -17,12 +17,28 @@ def mf(folder1, folder2):
     folder2_hashes = hash_folder(folder2)
 
     # Comparing the folders
-    for filehash, relpath in folder1_hashes.items():
+    missing_in_2 = []
+    differs_in_2 = []
+    for filehash, filepath in folder1_hashes.items():
         if filehash not in folder2_hashes:
-            print(f"File {relpath} is not in {folder2}")
-        elif folder2_hashes[filehash] != relpath:
-            print(f"File {relpath} differs")
+            missing_in_2.append(filepath)
+        elif folder2_hashes[filehash] != filepath:
+            differs_in_2.append(filepath)
+    if len(missing_in_2) == 0:
+        print(f"No files are missing from {folder2}")
+    else:
+        print(f"{len(missing_in_2)} files missing from {folder2}")
+        missing_in_2.sort()
+        [print(file) for file in missing_in_2]
 
-    for filehash, relpath in folder2_hashes.items():
+    missing_in_1 = []
+    differs_in_1 = []
+    for filehash, filepath in folder2_hashes.items():
         if filehash not in folder1_hashes:
-            print(f"File {relpath} is not in {folder1}")
+            missing_in_1.append(filepath)
+    if len(missing_in_2) == 0:
+        print(f"No files are missing from {folder1}")
+    else:
+        print(f"{len(missing_in_2)} missing from {folder1}")
+        missing_in_1.sort()
+        [print(file) for file in missing_in_1]
