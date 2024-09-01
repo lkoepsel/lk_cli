@@ -23,25 +23,28 @@ def fhc(folder1, folder2):
 
     subfolders1 = get_folders(folder1)
     subfolders2 = get_folders(folder2)
-
+    click.echo(f"Comparing {folder1} to {folder2}")
     no_match = []
     missing = []
     subfolders2.sort()
-    for folder in subfolders2:
-        if folder in subfolders1:
-            json1 = read_json(os.path.join(folder1, folder))
-            json2 = read_json(os.path.join(folder2, folder))
+    try:
+        for folder in subfolders2:
+            if folder in subfolders1:
+                json1 = read_json(os.path.join(folder1, folder))
+                json2 = read_json(os.path.join(folder2, folder))
 
-            if (
-                json1[os.path.join(folder1, folder)]
-                != json2[os.path.join(folder2, folder)]
-            ):
-                click.secho(f"{folder} does not match", fg="red")
-                no_match.append(folder)
+                if (
+                    json1[os.path.join(folder1, folder)]
+                    != json2[os.path.join(folder2, folder)]
+                ):
+                    click.secho(f"{folder} does not match", fg="red")
+                    no_match.append(folder)
 
-        else:
-            click.secho(f"{folder}, is missing in, {folder1}", fg="magenta")
-            missing.append(folder)
+            else:
+                click.secho(f"{folder}, is missing in, {folder1}", fg="magenta")
+                missing.append(folder)
+    except KeyError:
+        click.echo(f"{folder1=} {folder2=} folder=}")
 
     subfolders1.sort()
     for folder in subfolders1:
