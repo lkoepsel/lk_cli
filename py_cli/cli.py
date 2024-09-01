@@ -1,46 +1,21 @@
 import click
+from py_cli.mf import mf
+from py_cli.ch import ch
+from py_cli.fhc import fhc
+from py_cli.hw import hw
+from py_cli.mfs import mfs
 
 
-@click.command()
-def ch():
-    """Execute ch command"""
-    click.echo("Executing ch")
+@click.group()
+def cli():
+    pass
 
 
-@click.command()
-def fhc():
-    """Execute fhc command"""
-    click.echo("Executing fhc")
-
-
-@click.command()
-def hw():
-    """Execute hw command"""
-    click.echo("Executing hw")
-
-
-@click.command()
-def mf():
-    """Execute mf command"""
-    click.echo("Executing mf")
-
-
-@click.command()
-def mfs():
-    """Execute mfs command"""
-    click.echo("Executing mfs")
-
-
-# Group commands if needed
-cli = click.Group(
-    commands={
-        "ch": ch,
-        "fhc": fhc,
-        "hw": hw,
-        "mf": mf,
-        "mfs": mfs,
-    }
-)
+cli.add_command(mf)
+cli.add_command(ch)
+cli.add_command(fhc)
+cli.add_command(hw)
+cli.add_command(mfs)
 
 if __name__ == "__main__":
     cli()
