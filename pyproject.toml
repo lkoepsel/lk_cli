@@ -23,11 +23,11 @@ dependencies = ["click>=8.0", "xxhash"]
 urls = { "Homepage" = "https://github.com/lkoepsel/py_cli" }
 
 [project.scripts]
-mf = "py_cli.mf:mf"
-mfs = "py_cli.mfs:mfs"
-hw = "py_cli.hw:hw"
-ch = "py_cli.ch:ch"
-fhc = "py_cli.fhc:fhc"
+mf = "cli:mf"
+mfs = "cli:mfs"
+hw = "cli:hw"
+ch = "cli:ch"
+fhc = "cli:fhc"
 
 [tool.setuptools]
 packages = ["py_cli"]
