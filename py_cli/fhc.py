@@ -46,6 +46,8 @@ def fhc(folder1, folder2):
                 click.secho(f"{folder}, is missing in, {folder1}", fg="magenta")
                 missing.append(folder)
     except KeyError:
+        click.echo("KeyError: The following parameters were in play:")
+        click.echo(f"{json1=} {json2=}")
         click.echo(f"{folder1=} {folder2=} {folder=}")
 
     subfolders1.sort()
