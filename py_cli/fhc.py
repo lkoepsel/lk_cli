@@ -23,7 +23,9 @@ def fhc(folder1, folder2):
 
     subfolders1 = get_folders(folder1)
     subfolders2 = get_folders(folder2)
+
     click.echo(f"Comparing {folder1} to {folder2}")
+
     no_match = []
     missing = []
     subfolders2.sort()
@@ -44,7 +46,7 @@ def fhc(folder1, folder2):
                 click.secho(f"{folder}, is missing in, {folder1}", fg="magenta")
                 missing.append(folder)
     except KeyError:
-        click.echo(f"{folder1=} {folder2=} folder=}")
+        click.echo(f"{folder1=} {folder2=} {folder=}")
 
     subfolders1.sort()
     for folder in subfolders1:
