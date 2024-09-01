@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "py_cli"
-version = "0.6.2"
+version = "0.6.5"
 description = "Missing file utilities"
 readme = { file = "README.md", content-type = "text/markdown" }
 authors = [

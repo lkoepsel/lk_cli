@@ -4,7 +4,16 @@ A python package to provide tools for finding missing files.
 ## Installation
 
 ### 1. Install from GitHub
+#### Preferred Install using uv
+This version installs uv then using *uv* to install *py_cli*, using *uv* is my new preferred method of adding python tools and packages
+```bash
+cd
+curl -LsSf https://astral.sh/uv/install.sh | sh
+source $HOME/.cargo/env
+uv tool install --from git+https://github.com/lkoepsel/py_cli.git py_cli
+```
 
+#### Standard Install
 ```bash
 venv py_cli_env
 source .venv/bin/activate
