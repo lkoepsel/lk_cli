@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "py_cli"
-version = "0.6"
+version = "0.6.1"
 description = "Missing file utilities"
 readme = { file = "README.md", content-type = "text/markdown" }
 authors = [
@@ -23,11 +23,11 @@ dependencies = ["click>=8.0", "xxhash"]
 urls = { "Homepage" = "https://github.com/lkoepsel/py_cli" }
 
 [project.scripts]
-mf = "cli:mf"
-mfs = "cli:mfs"
-hw = "cli:hw"
-ch = "cli:ch"
-fhc = "cli:fhc"
+mf = "py_cli.cli:mf"
+mfs = "py_cli.cli:mfs"
+hw = "py_cli.cli:hw"
+ch = "py_cli.cli:ch"
+fhc = "py_cli.cli:fhc"
 
 [tool.setuptools]
 packages = ["py_cli"]
