@@ -6,13 +6,13 @@ from multiprocessing import Pool
 from functools import partial
 
 
-dot_file = re.compile(r'^\.')
+dot_file = re.compile(r"^\.")
 CORES = 8
 BLOCKSIZE = 1048576
 
 
 def write_json(folder, name, dict):
-    with open(os.path.join(folder, name), 'w') as hash_file:
+    with open(os.path.join(folder, name), "w") as hash_file:
         json.dump(dict, hash_file, indent=4)
 
 
@@ -82,14 +82,19 @@ def hash_hashes(hashes):
     """Generate a hash of the folder of hashes."""
     hasher = xxhash.xxh64()
     for hash_text in hashes:
-        hasher.update(hash_text.encode('utf-8'))
+        hasher.update(hash_text.encode("utf-8"))
     hash_of_folder = hasher.hexdigest()
-    return(hash_of_folder)
+    return hash_of_folder
 
 
-def read_json(folder):
-    with open(os.path.join(folder, '.hash.json'), 'r') as hash_file:
-        return(json.load(hash_file))
+def read_hash(folder):
+    with open(os.path.join(folder, ".hash.json"), "r") as hash_file:
+        return json.load(hash_file)
+
+
+def read_hashes(folder):
+    with open(os.path.join(folder, ".hashes.json"), "r") as hashes_file:
+        return json.load(hashes_file)
 
 
 def get_folders(folder):
@@ -100,4 +105,4 @@ def get_folders(folder):
                 if not dot_file.match(os.path.join(root, directory)):
                     subfolders.append(directory)
         break
-    return(subfolders)
+    return subfolders

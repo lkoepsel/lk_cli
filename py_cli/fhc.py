@@ -1,6 +1,6 @@
 import click
 import os
-from py_cli.utils import get_folders, read_json
+from py_cli.utils import get_folders, read_hash
 
 
 @click.command()
@@ -32,8 +32,8 @@ def fhc(folder1, folder2):
     try:
         for folder in subfolders2:
             if folder in subfolders1:
-                json1 = read_json(os.path.join(folder1, folder))
-                json2 = read_json(os.path.join(folder2, folder))
+                json1 = read_hash(os.path.join(folder1, folder))
+                json2 = read_hash(os.path.join(folder2, folder))
 
                 if (
                     json1[os.path.join(folder1, folder)]
