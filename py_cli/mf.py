@@ -1,9 +1,9 @@
 import click
-from py_cli.utils import hash_folder_mp
+from py_cli.utils import hash_folder_mp, get_version
 
 
 @click.command()
-@click.version_option("0.4", prog_name="mf")
+@click.version_option(get_version(), prog_name="mf")
 @click.argument("folder1", type=click.Path(exists=True, file_okay=False))
 @click.argument("folder2", type=click.Path(exists=True, file_okay=False))
 def mf(folder1, folder2):

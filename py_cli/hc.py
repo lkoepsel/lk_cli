@@ -1,10 +1,10 @@
 import click
 import os
-from py_cli.utils import get_folders, read_hashes
+from py_cli.utils import get_folders, read_hashes, get_version
 
 
 @click.command()
-@click.version_option("0.4", prog_name="hc")
+@click.version_option(get_version(), prog_name="hc")
 @click.argument("folder1", type=click.Path(exists=True, file_okay=False))
 @click.argument("folder2", type=click.Path(exists=True, file_okay=False))
 def hc(folder1, folder2):

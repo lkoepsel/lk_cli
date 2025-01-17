@@ -1,12 +1,12 @@
 import click  # type: ignore
-from py_cli.utils import hash_folder
+from py_cli.utils import hash_folder, get_version
 
 
 BLOCKSIZE = 1048576
 
 
 @click.command()
-@click.version_option("0.5", prog_name="mfs")
+@click.version_option(get_version(), prog_name="mfs")
 @click.argument("folder1", type=click.Path(exists=True, file_okay=False))
 @click.argument("folder2", type=click.Path(exists=True, file_okay=False))
 def mfs(folder1, folder2):

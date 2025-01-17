@@ -1,11 +1,11 @@
 import click
 from datetime import datetime
 import os
-from py_cli.utils import last_modified_file, hash_folder_mp, write_json
+from py_cli.utils import last_modified_file, hash_folder_mp, write_json, get_version
 
 
 @click.command()
-@click.version_option("0.4", prog_name="hw")
+@click.version_option(get_version(), prog_name="hw")
 @click.argument("folders", nargs=-1, type=click.Path(exists=True, file_okay=False))
 def hw(folders):
     """

@@ -2,25 +2,9 @@ import click
 import datetime
 import json
 import os
-from py_cli.utils import last_modified_file
-import tomllib
+from py_cli.utils import last_modified_file, get_version
 
 ignore_files = [".DS_Store", ".hash.json"]
-
-
-def get_version():
-    try:
-        import pathlib
-
-        package_dir = pathlib.Path(__file__).parent.parent
-        toml_path = os.path.join(package_dir, "pyproject.toml")
-
-        with open(toml_path, "rb") as f:
-            data = tomllib.load(f)
-            return data["project"]["version"]
-    except Exception as e:
-        click.secho(f"Error reading version: {e}", fg="red", err=True)
-        return "Version unknown"
 
 
 def format_timestamp(timestamp):

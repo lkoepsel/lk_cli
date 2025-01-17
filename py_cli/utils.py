@@ -4,11 +4,27 @@ import re
 import xxhash
 from multiprocessing import Pool
 from functools import partial
+import tomllib
 
 
 dot_file = re.compile(r"^\.")
 CORES = 8
 BLOCKSIZE = 1048576
+
+
+def get_version():
+    try:
+        import pathlib
+
+        package_dir = pathlib.Path(__file__).parent.parent
+        toml_path = os.path.join(package_dir, "pyproject.toml")
+
+        with open(toml_path, "rb") as f:
+            data = tomllib.load(f)
+            return data["project"]["version"]
+    except Exception as e:
+        click.secho(f"Error reading version: {e}", fg="red", err=True)
+        return "Version unknown"
 
 
 def write_json(folder, name, dict):
