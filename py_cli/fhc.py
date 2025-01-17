@@ -29,8 +29,15 @@ def fhc(folder1, folder2):
     no_match = []
     missing = []
     subfolders2.sort()
+
+    # Initialize variables outside try block
+    json1 = None
+    json2 = None
+    current_folder = None
+
     try:
         for folder in subfolders2:
+            current_folder = folder  # Store current folder for error reporting
             if folder in subfolders1:
                 json1 = read_hash(os.path.join(folder1, folder))
                 json2 = read_hash(os.path.join(folder2, folder))
@@ -47,8 +54,11 @@ def fhc(folder1, folder2):
                 missing.append(folder)
     except KeyError:
         click.echo("KeyError: The following parameters were in play:")
-        click.echo(f"{json1=} {json2=}")
-        click.echo(f"{folder1=} {folder2=} {folder=}")
+        click.echo(f"json1: {json1}")
+        click.echo(f"json2: {json2}")
+        click.echo(f"folder1: {folder1}")
+        click.echo(f"folder2: {folder2}")
+        click.echo(f"current folder: {current_folder}")
 
     subfolders1.sort()
     for folder in subfolders1:
