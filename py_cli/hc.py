@@ -1,6 +1,5 @@
 import click
-import os
-from py_cli.utils import get_folders, read_hashes, get_version
+from py_cli.utils import read_hashes, get_version
 
 
 @click.command()
@@ -27,6 +26,11 @@ def hc(folder1, folder2):
 
     no_match = []
     missing = []
+
+    # Initialize variables outside try block
+    json1 = None
+    json2 = None
+
     try:
         for filehash, filename in hashes2.items():
             if filehash in hashes1:
@@ -40,7 +44,7 @@ def hc(folder1, folder2):
     except KeyError:
         click.echo("KeyError: The following parameters were in play:")
         click.echo(f"{json1=} {json2=}")
-        click.echo(f"{folder1=} {folder2=} {folder=}")
+        click.echo(f"{folder1=} {folder2=}")
 
     for filehash, filename in hashes1.items():
         if filehash not in hashes2:
