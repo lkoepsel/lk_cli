@@ -1,6 +1,6 @@
 # Missing File Utilities
 A python package to provide tools for finding missing files.
- 
+
 ## Installation
 
 ### 1. Install from GitHub
@@ -29,23 +29,22 @@ pip install git+https://github.com/lkoepsel/py_cli.git
 * **mfs - Missing File Sequential:** Compare two folders using hash of each file for comparison. Sequential version, retained for checking against *mf*.
 
 ## Notes
-### Simple Editing/Running
-If in the folder and env is activated, editing the file will be reflected in the execution. Once everything has been resolved to satisfaction for an update, use instructions below.
 
-### To update package
-1. Increase version number
-```toml
-version = "0.6"
-```
-1. Delete previous build artifacts:
+## Using uv to install
+
+The general sequence of commands are:
 ```bash
-rm -rf build dist __pycache__ *.egg-info
-```
-1. Build package
-```bash
-python -m build
-```
-1. Upgrade locally using filename of wheel, *confirm new name of wheel based on version number.*
-```bash
-pip install --upgrade dist/py_cli-0.6-py3-none-any.whl
+# to install latest version
+rm -rf build/ dist/ *.egg-info/  # start with a clean build
+uv pip install --upgrade -e .
+
+# to edit files (be sure to increase version number in pyproject.toml)
+uvx ruff format
+uvx ruff check
+# make required fixes
+git add -A
+git commit -m "message"
+git push
+# to install latest version
+uv pip install --upgrade git+https://github.com/lkoepsel/py_cli.git
 ```
