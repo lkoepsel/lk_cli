@@ -3,18 +3,72 @@ import datetime
 import json
 import os
 from py_cli.utils import last_modified_file
-
+import tomllib
 
 ignore_files = [".DS_Store", ".hash.json"]
 
 
-# Function to convert timestamp to a readable format
+def get_version():
+    try:
+        import pathlib
+
+        package_dir = pathlib.Path(__file__).parent.parent
+        toml_path = os.path.join(package_dir, "pyproject.toml")
+
+        with open(toml_path, "rb") as f:
+            data = tomllib.load(f)
+            return data["project"]["version"]
+    except Exception as e:
+        click.secho(f"Error reading version: {e}", fg="red", err=True)
+        return "Version unknown"
+
+
 def format_timestamp(timestamp):
     return datetime.datetime.fromtimestamp(timestamp).strftime("%Y-%m-%d %H:%M:%S")
 
 
+def process_missing_files(folder, file_hashes):
+    try:
+        missing_files = []
+        for file_hash, file_name in file_hashes.items():
+            if not os.path.exists(os.path.join(folder, file_name)):
+                missing_files.append(file_name)
+        return missing_files
+    except Exception as e:
+        click.secho(f"Error processing missing files: {e}", fg="red", err=True)
+        return []
+
+
+def process_changed_files(folder, changed):
+    try:
+        with open(os.path.join(folder, ".hash.json"), "r") as file:
+            folder_hash = json.load(file)
+            if (
+                changed[0] > folder_hash["last_modified_file_date"]
+                and os.path.basename(changed[1]) not in ignore_files
+            ):
+                return [changed[1]]
+    except Exception as e:
+        click.echo(f"Error occurred: {e}")
+    return []
+
+
+def display_results(missing_folders, changed_folders):
+    if missing_folders:
+        for folder, files in missing_folders.items():
+            click.secho(f"{folder} is missing:", fg="magenta")
+            for file in files:
+                click.secho(f"{file}", fg="magenta")
+
+    if changed_folders:
+        for folder, files in changed_folders.items():
+            click.secho(f"{folder} has changed:", fg="yellow")
+            for file in files:
+                click.secho(f"{file}", fg="yellow")
+
+
 @click.command()
-@click.version_option("0.4", prog_name="ch")
+@click.version_option(get_version(), prog_name="ch")
 @click.argument("folders", nargs=-1, type=click.Path(exists=True, file_okay=False))
 def ch(folders):
     """
@@ -24,39 +78,28 @@ def ch(folders):
     """
     missing_folders = {}
     changed_folders = {}
+
     with click.progressbar(folders) as progressbar:
         for folder in progressbar:
-            changed = last_modified_file(folder)
-
-            with open(os.path.join(folder, ".hashes.json"), "r") as file:
-                file_hashes = json.load(file)
-
-                for file_hash, file_name in file_hashes.items():
-                    if not os.path.exists(os.path.join(folder, file_name)):
-                        if folder not in missing_folders.keys():
-                            missing_folders[folder] = [file_name]
-                        else:
-                            missing_folders[folder].append(file_name)
-            # Read and process the JSON file
             try:
-                with open(os.path.join(folder, ".hash.json"), "r") as file:
-                    folder_hash = json.load(file)
+                changed = last_modified_file(folder)
 
-                    if changed[0] > folder_hash["last_modified_file_date"]:
-                        if os.path.basename(changed[1]) not in ignore_files:
-                            if folder not in changed_folders.keys():
-                                changed_folders[folder] = [file_name]
+                # Process missing files
+                with open(os.path.join(folder, ".hashes.json"), "r") as file:
+                    file_hashes = json.load(file)
+                    missing_files = process_missing_files(folder, file_hashes)
+                    if missing_files:
+                        missing_folders[folder] = missing_files
 
+                # Process changed files
+                changed_files = process_changed_files(folder, changed)
+                if changed_files:
+                    changed_folders[folder] = changed_files
+            except FileNotFoundError:
+                click.secho(f"No .hashes.json found in {folder}", fg="red", err=True)
             except Exception as e:
-                click.echo(f"Error occurred: {e}")
+                click.secho(
+                    f"Error processing folder {folder}: {e}", fg="red", err=True
+                )
 
-    if len(missing_folders.keys()) != 0:
-        for folder, files in missing_folders.items():
-            click.secho(f"{folder} is missing:", fg="magenta")
-            for file in files:
-                click.secho(f"{file}", fg="magenta")
-    if len(changed_folders.keys()) != 0:
-        for folder, files in changed_folders.items():
-            click.secho(f"{folder} has changed:", fg="yellow")
-            for file in files:
-                click.secho(f"{file}", fg="yellow")
+    display_results(missing_folders, changed_folders)

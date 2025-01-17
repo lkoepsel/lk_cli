@@ -4,12 +4,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "py_cli"
-version = "0.7.1"
+version = "0.8.1"
 description = "Missing file utilities"
 readme = { file = "README.md", content-type = "text/markdown" }
-authors = [
-    { name = "Lief Koepsel", email = "lkoepsel@wellys.com" }
-]
+authors = [{ name = "Lief Koepsel", email = "lkoepsel@wellys.com" }]
 keywords = ["Python", "missing files"]
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -17,7 +15,7 @@ classifiers = [
     "Topic :: Software Development :: Communications",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.12"
+    "Programming Language :: Python :: 3.12",
 ]
 dependencies = ["click>=8.0", "xxhash"]
 urls = { "Homepage" = "https://github.com/lkoepsel/py_cli" }
