@@ -1,6 +1,5 @@
 import click
-import os
-from py_cli.utils import hash_folder_mp, get_version
+from py_cli.utils import get_version, calculate_file_hash, shorten_path
 
 
 @click.command()
@@ -11,16 +10,10 @@ def hp(files):
     Print hash of each specified file to the screen.
     Uses xxHash64 for speed.
     """
-    with click.progressbar(files) as progressbar:
-        for file_path in progressbar:
-            # We'll reuse hash_folder_mp but with the file's parent directory
-            folder = os.path.dirname(file_path) or "."
-            folder_hashes, _ = hash_folder_mp(folder)
-
-            # Only print the hash for the specified file
-            file_name = os.path.basename(file_path)
-            if file_name in folder_hashes:
-                click.echo(f"{file_path}: {folder_hashes[file_name]}")
+    for file_path in files:
+        file_hash = calculate_file_hash(file_path)
+        shortened_path = shorten_path(file_path)
+        click.echo(f"{shortened_path}: {file_hash}")
 
 
 if __name__ == "__main__":
