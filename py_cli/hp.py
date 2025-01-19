@@ -7,6 +7,7 @@ from py_cli.utils import get_version, calculate_file_hash, shorten_path
 @click.argument("files", nargs=-1, type=click.Path(exists=True, dir_okay=False))
 def hp(files):
     """
+    hp: hash print
     Print hash of each specified file to the screen.
     Uses xxHash64 for speed.
     """

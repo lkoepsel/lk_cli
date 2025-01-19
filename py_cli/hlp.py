@@ -6,8 +6,11 @@ from py_cli.utils import get_version
 @click.command()
 @click.version_option(get_version(), prog_name="hlp")
 def hlp():
-    """Lists all installed CLI utilities and their descriptions."""
-    utilities = ["ch", "fhc", "hc", "hw", "mf", "mfs"]
+    """
+    hlp: help command
+    Lists all installed CLI utilities and their descriptions.
+    """
+    utilities = ["ch", "fhc", "hc", "hp", "hw", "mf", "mfs"]
 
     click.echo(
         click.style(

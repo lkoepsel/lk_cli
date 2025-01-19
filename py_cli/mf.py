@@ -8,6 +8,7 @@ from py_cli.utils import hash_folder_mp, get_version
 @click.argument("folder2", type=click.Path(exists=True, file_okay=False))
 def mf(folder1, folder2):
     """
+    mf: missing files
     Very fast! Compare two folders using hashes. Uses multiprocessing and
     xxHash64 for speed.
 

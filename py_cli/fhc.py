@@ -9,6 +9,7 @@ from py_cli.utils import get_folders, read_hash, get_version
 @click.argument("folder2", type=click.Path(exists=True, file_okay=False))
 def fhc(folder1, folder2):
     """
+    fhc: Folder Hash Compare (by subfolders)
     Compare two folders by examining the hash files for each of the
     folders, subfolders.
 

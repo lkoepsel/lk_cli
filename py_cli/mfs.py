@@ -11,6 +11,7 @@ BLOCKSIZE = 1048576
 @click.argument("folder2", type=click.Path(exists=True, file_okay=False))
 def mfs(folder1, folder2):
     """
+    mfs: missing files, sequential
     Uses sequential processing to
     compare two folders using hash of each file for comparison.
     Use mf for higher performance, this version retained for checking.

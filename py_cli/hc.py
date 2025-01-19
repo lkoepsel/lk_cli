@@ -8,6 +8,7 @@ from py_cli.utils import read_hashes, get_version
 @click.argument("folder2", type=click.Path(exists=True, file_okay=False))
 def hc(folder1, folder2):
     """
+    hc: Hash Compare (by specific folders)
     Compare two folders by examining the hashes of the files in each folder
 
     The process is:

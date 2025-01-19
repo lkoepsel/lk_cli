@@ -9,6 +9,7 @@ from py_cli.utils import last_modified_file, hash_folder_mp, write_json, get_ver
 @click.argument("folders", nargs=-1, type=click.Path(exists=True, file_okay=False))
 def hw(folders):
     """
+    hw: hash write
     Write hash of each file in folder to a hashes.json
     file in folder. Uses multiprocessing and xxHash64 for speed.
 

@@ -1,6 +1,78 @@
 # Missing File Utilities
 A python package to provide tools for finding missing files.
 
+## Documentation
+```bash
+Installed Utilities and Their Descriptions:
+
+ch:
+
+    ch: check hash - read existing hash.json and .hashes.josn files
+    and confirm hashes for files have not changed. Use to ensure
+    hash files are in-sync with folder contents.
+
+
+fhc:
+
+    fhc: Folder Hash Compare (by subfolders)
+    Compare two folders by examining the hash files for each of the
+    folders, subfolders.
+
+    The process is:
+
+    1. For both folders, 'hw subfolders'. This is preferably performed
+    at a much earlier date.
+
+    2. Run fhc folder1 folder2
+
+
+
+hc:
+
+    hc: Hash Compare (by specific folders)
+    Compare two folders by examining the hashes of the files in each folder
+
+    The process is:
+
+    1. For both folders, 'hw folder'. This is preferably performed
+    at a much earlier date.
+
+    2. Run hc folder1 folder2
+
+
+
+hp:
+
+    hp: hash print
+    Print hash of each specified file to the screen.
+    Uses xxHash64 for speed.
+
+
+hw:
+
+    hw: hash write
+    Write hash of each file in folder to a hashes.json
+    file in folder. Uses multiprocessing and xxHash64 for speed.
+
+
+
+mf:
+
+    mf: missing files
+    Very fast! Compare two folders using hashes. Uses multiprocessing and
+    xxHash64 for speed.
+
+
+
+mfs:
+
+    mfs: missing files, sequential
+    Uses sequential processing to
+    compare two folders using hash of each file for comparison.
+    Use mf for higher performance, this version retained for checking.
+
+```
+
 ## Installation
 
 ### 1. Install from GitHub
