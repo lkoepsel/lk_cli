@@ -10,11 +10,16 @@ def hlp():
     hlp: help command
     Lists all installed CLI utilities and their descriptions.
     """
-    utilities = ["ch", "fhc", "hc", "hp", "hw", "mf", "mfs"]
+    utilities = ["ch", "fhc", "hc", "hlp", "hp", "hw", "mf", "mfs"]
 
     click.echo(
         click.style(
-            "Installed Utilities and Their Descriptions:", fg="green", bold=True
+            """
+           Utilities and Their Descriptions:
+           (run hlp to see this list again)
+           """,
+            fg="green",
+            bold=True,
         )
     )
     click.echo()

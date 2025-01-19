@@ -3,7 +3,10 @@ A python package to provide tools for finding missing files.
 
 ## Documentation
 ```bash
-Installed Utilities and Their Descriptions:
+
+           Utilities and Their Descriptions:
+           (run hlp to see this list again)
+
 
 ch:
 
@@ -39,6 +42,12 @@ hc:
 
     2. Run hc folder1 folder2
 
+
+
+hlp:
+
+    hlp: help command
+    Lists all installed CLI utilities and their descriptions.
 
 
 hp:
