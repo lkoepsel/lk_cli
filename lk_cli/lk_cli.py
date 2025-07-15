@@ -1,13 +1,13 @@
 import click
 import importlib
-from py_cli.utils import get_version
+from lk_cli.utils import get_version
 
 
 @click.command()
-@click.version_option(get_version(), prog_name="py_cli")
-def py_cli():
+@click.version_option(get_version(), prog_name="lk_cli")
+def lk_cli():
     """
-    py_cli: Python CLI utilities collection
+    lk_cli: Python CLI utilities collection
     Lists all installed CLI utilities and their descriptions.
     """
     utilities = ["ch", "dedup", "fhc", "hc", "hp", "hw", "mf", "mfs"]
@@ -16,7 +16,7 @@ def py_cli():
         click.style(
             """
            Utilities and Their Descriptions:
-           (run py_cli --help to see this list again)
+           (run lk_cli --help to see this list again)
            """,
             fg="green",
             bold=True,
@@ -27,7 +27,7 @@ def py_cli():
     for util in utilities:
         try:
             # Import the module
-            module = importlib.import_module(f"py_cli.{util}")
+            module = importlib.import_module(f"lk_cli.{util}")
 
             # Get the click command object
             command = getattr(module, util, None)
@@ -48,4 +48,4 @@ def py_cli():
 
 
 if __name__ == "__main__":
-    py_cli()
+    lk_cli()

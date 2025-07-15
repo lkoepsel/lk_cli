@@ -1,5 +1,5 @@
 """
-py_cli
+lk_cli
 
 Python CLI file utilities
 """

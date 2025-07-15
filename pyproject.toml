@@ -3,8 +3,8 @@ requires = ["setuptools>=42", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "py_cli"
-version = "0.9.1"
+name = "lk_cli"
+version = "0.9.0"
 description = "Missing file utilities"
 readme = { file = "README.md", content-type = "text/markdown" }
 authors = [{ name = "Lief Koepsel", email = "lkoepsel@wellys.com" }]
@@ -18,18 +18,18 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
 ]
 dependencies = ["click>=8.0", "xxhash"]
-urls = { "Homepage" = "https://github.com/lkoepsel/py_cli" }
+urls = { "Homepage" = "https://github.com/lkoepsel/lk_cli" }
 
 [project.scripts]
-ch = "py_cli.ch:ch"
-dedup = "py_cli.dedup:dedup"
-mf = "py_cli.mf:mf"
-mfs = "py_cli.mfs:mfs"
-hw = "py_cli.hw:hw"
-hp = "py_cli.hp:hp"
-fhc = "py_cli.fhc:fhc"
-hc = "py_cli.hc:hc"
-py_cli = "py_cli.py_cli:py_cli"
+ch = "lk_cli.ch:ch"
+dedup = "lk_cli.dedup:dedup"
+mf = "lk_cli.mf:mf"
+mfs = "lk_cli.mfs:mfs"
+hw = "lk_cli.hw:hw"
+hp = "lk_cli.hp:hp"
+fhc = "lk_cli.fhc:fhc"
+hc = "lk_cli.hc:hc"
+lk_cli = "lk_cli.lk_cli:lk_cli"
 
 [tool.setuptools]
-packages = ["py_cli"]
+packages = ["lk_cli"]

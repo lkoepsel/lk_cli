@@ -6,14 +6,14 @@ from .mf import mf
 from .hw import hw
 from .hc import hc
 from .mfs import mfs
-from .py_cli import py_cli
+from .lk_cli import lk_cli
 
 """
-py_cli.
+lk_cli.
 
 python command line utilities"""
 
 __version__ = "0.2.0"
 __author__ = "Lief Koepsel"
 __credits__ = "wellys.com"
-__all__ = ["cli", "ch", "dedup", "fhc", "mf", "hw", "hc", "mfs", "py_cli"]
+__all__ = ["cli", "ch", "dedup", "fhc", "mf", "hw", "hc", "mfs", "lk_cli"]

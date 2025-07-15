@@ -2,7 +2,7 @@ import click
 import os
 import shutil
 from collections import defaultdict
-from py_cli.utils import hash_file, get_version
+from lk_cli.utils import hash_file, get_version
 
 
 @click.command()

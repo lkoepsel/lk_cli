@@ -1,5 +1,5 @@
 import click
-from py_cli.utils import hash_folder_mp, get_version
+from lk_cli.utils import hash_folder_mp, get_version
 
 
 @click.command()

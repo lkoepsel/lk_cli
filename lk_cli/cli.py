@@ -1,12 +1,12 @@
 import click
-from py_cli.ch import ch
-from py_cli.dedup import dedup
-from py_cli.fhc import fhc
-from py_cli.mf import mf
-from py_cli.hw import hw
-from py_cli.hp import hp
-from py_cli.hc import hc
-from py_cli.mfs import mfs
+from lk_cli.ch import ch
+from lk_cli.dedup import dedup
+from lk_cli.fhc import fhc
+from lk_cli.mf import mf
+from lk_cli.hw import hw
+from lk_cli.hp import hp
+from lk_cli.hc import hc
+from lk_cli.mfs import mfs
 
 
 @click.group()

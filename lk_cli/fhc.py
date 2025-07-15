@@ -1,6 +1,6 @@
 import click
 import os
-from py_cli.utils import get_folders, read_hash, get_version
+from lk_cli.utils import get_folders, read_hash, get_version
 
 
 @click.command()

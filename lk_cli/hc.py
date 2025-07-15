@@ -1,5 +1,5 @@
 import click
-from py_cli.utils import read_hashes, get_version
+from lk_cli.utils import read_hashes, get_version
 
 
 @click.command()

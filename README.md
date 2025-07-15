@@ -5,7 +5,7 @@ A python package to provide tools for finding missing files.
 ```bash
 
            Utilities and Their Descriptions:
-           (run py_cli to see this list again)
+           (run lk_cli to see this list again)
 
 
 ch:
@@ -91,20 +91,20 @@ mfs:
 
 ### 1. Install from GitHub
 #### Preferred Install using uv
-This version installs uv then using *uv* to install *py_cli*, using *uv* is my new preferred method of adding python tools and packages
+This version installs uv then using *uv* to install *lk_cli*, using *uv* is my new preferred method of adding python tools and packages
 ```bash
 cd
 curl -LsSf https://astral.sh/uv/install.sh | sh
 source $HOME/.cargo/env
-uv tool install --from git+https://github.com/lkoepsel/py_cli.git py_cli
+uv tool install --from git+https://github.com/lkoepsel/lk_cli.git lk_cli
 ```
 
 #### Standard Install
 ```bash
-venv py_cli_env
+venv lk_cli_env
 source .venv/bin/activate
 source .venv/bin/Activate.fish
-pip install git+https://github.com/lkoepsel/py_cli.git
+pip install git+https://github.com/lkoepsel/lk_cli.git
 ```
 
 ### 2. Tools Installed
@@ -132,5 +132,5 @@ git add -A
 git commit -m "message"
 git push
 # to install latest version
-uv pip install --upgrade git+https://github.com/lkoepsel/py_cli.git
+uv pip install --upgrade git+https://github.com/lkoepsel/lk_cli.git
 ```

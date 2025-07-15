@@ -1,5 +1,5 @@
 import click
-from py_cli.utils import get_version, calculate_file_hash, shorten_path
+from lk_cli.utils import get_version, calculate_file_hash, shorten_path
 
 
 @click.command()

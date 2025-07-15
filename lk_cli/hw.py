@@ -1,7 +1,7 @@
 import click
 from datetime import datetime
 import os
-from py_cli.utils import last_modified_file, hash_folder_mp, write_json, get_version
+from lk_cli.utils import last_modified_file, hash_folder_mp, write_json, get_version
 
 
 @click.command()

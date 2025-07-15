@@ -1,5 +1,5 @@
 import click  # type: ignore
-from py_cli.utils import hash_folder, get_version
+from lk_cli.utils import hash_folder, get_version
 
 
 BLOCKSIZE = 1048576
