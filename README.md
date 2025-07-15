@@ -5,7 +5,7 @@ A python package to provide tools for finding missing files.
 ```bash
 
            Utilities and Their Descriptions:
-           (run hlp to see this list again)
+           (run py_cli to see this list again)
 
 
 ch:
@@ -14,6 +14,11 @@ ch:
     and confirm hashes for files have not changed. Use to ensure
     hash files are in-sync with folder contents.
 
+dd:
+
+    dd: duplicate detector - move duplicate files out of folder
+    Check for duplicate files in a folder using file hashes. 
+    The most recent file is kept and duplicates are moved to DUPLICATES_DELETE folder on Desktop.
 
 fhc:
 

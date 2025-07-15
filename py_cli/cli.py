@@ -1,7 +1,7 @@
 import click
 from py_cli.ch import ch
+from py_cli.dd import dd
 from py_cli.fhc import fhc
-from py_cli.hlp import hlp
 from py_cli.mf import mf
 from py_cli.hw import hw
 from py_cli.hp import hp
@@ -15,8 +15,8 @@ def cli():
 
 
 cli.add_command(ch)
+cli.add_command(dd)
 cli.add_command(fhc)
-cli.add_command(hlp)
 cli.add_command(hc)
 cli.add_command(hw)
 cli.add_command(hp)
