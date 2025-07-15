@@ -27,6 +27,8 @@ def mf(folder1, folder2):
         click.echo(f"Missing in {folder2}")
         for file in missing_in_folder2:
             click.echo(f"{file}")
+    else:
+        click.echo(f"No files missing in {folder2}")
 
     for filehash, relpath in folder2_hashes[0].items():
         if filehash not in folder1_hashes[0]:
@@ -36,3 +38,5 @@ def mf(folder1, folder2):
         click.echo(f"Missing in {folder1}")
         for file in missing_in_folder1:
             click.echo(f"{file}")
+    else:
+        click.echo(f"No files missing in {folder1}")
