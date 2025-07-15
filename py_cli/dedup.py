@@ -6,12 +6,12 @@ from py_cli.utils import hash_file, get_version
 
 
 @click.command()
-@click.version_option(get_version(), prog_name="dd")
+@click.version_option(get_version(), prog_name="dedup")
 @click.argument("folder", type=click.Path(exists=True, file_okay=False))
 @click.option("--dry-run", is_flag=True, help="Show what would be done without actually moving files")
-def dd(folder, dry_run):
+def dedup(folder, dry_run):
     """
-    dd: duplicate detector
+    dedup: duplicate detector
     Check for duplicate files in a folder using file hashes. 
     The most recent file is kept and duplicates are moved to DUPLICATES_DELETE folder on Desktop.
     """

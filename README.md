@@ -14,9 +14,9 @@ ch:
     and confirm hashes for files have not changed. Use to ensure
     hash files are in-sync with folder contents.
 
-dd:
+dedup:
 
-    dd: duplicate detector - move duplicate files out of folder
+    dedup: duplicate detector - move duplicate files out of folder
     Check for duplicate files in a folder using file hashes. 
     The most recent file is kept and duplicates are moved to DUPLICATES_DELETE folder on Desktop.
 

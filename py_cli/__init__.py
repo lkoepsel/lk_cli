@@ -1,6 +1,6 @@
 from .cli import cli
 from .ch import ch
-from .dd import dd
+from .dedup import dedup
 from .fhc import fhc
 from .mf import mf
 from .hw import hw
@@ -16,4 +16,4 @@ python command line utilities"""
 __version__ = "0.2.0"
 __author__ = "Lief Koepsel"
 __credits__ = "wellys.com"
-__all__ = ["cli", "ch", "dd", "fhc", "mf", "hw", "hc", "mfs", "py_cli"]
+__all__ = ["cli", "ch", "dedup", "fhc", "mf", "hw", "hc", "mfs", "py_cli"]

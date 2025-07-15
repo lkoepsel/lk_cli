@@ -10,7 +10,7 @@ def py_cli():
     py_cli: Python CLI utilities collection
     Lists all installed CLI utilities and their descriptions.
     """
-    utilities = ["ch", "dd", "fhc", "hc", "hp", "hw", "mf", "mfs"]
+    utilities = ["ch", "dedup", "fhc", "hc", "hp", "hw", "mf", "mfs"]
 
     click.echo(
         click.style(
