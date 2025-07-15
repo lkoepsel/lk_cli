@@ -34,18 +34,32 @@ def get_folders(folder):
 
 
 def get_version():
+    """Get version from package metadata, with fallback methods."""
     try:
-        import pathlib
+        # Method 1: Try to get version from installed package metadata
+        try:
+            import importlib.metadata
 
-        package_dir = pathlib.Path(__file__).parent.parent
-        toml_path = os.path.join(package_dir, "pyproject.toml")
+            return importlib.metadata.version("lk_cli")
+        except ImportError:
+            # For Python < 3.8
+            import importlib_metadata
 
-        with open(toml_path, "rb") as f:
-            data = tomllib.load(f)
-            return data["project"]["version"]
-    except Exception as e:
-        click.secho(f"Error reading version: {e}", fg="red", err=True)
-        return "Version unknown"
+            return importlib_metadata.version("lk_cli")
+    except Exception:
+        # Method 2: Try to read from pyproject.toml in development
+        try:
+            import pathlib
+
+            package_dir = pathlib.Path(__file__).parent.parent
+            toml_path = os.path.join(package_dir, "pyproject.toml")
+
+            with open(toml_path, "rb") as f:
+                data = tomllib.load(f)
+                return data["project"]["version"]
+        except Exception:
+            # Method 3: Fallback to hardcoded version
+            return "0.9.0"
 
 
 def hash_file(filepath):
