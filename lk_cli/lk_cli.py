@@ -10,7 +10,7 @@ def lk_cli():
     lk_cli: Python CLI utilities collection
     Lists all installed CLI utilities and their descriptions.
     """
-    utilities = ["ch", "dedup", "fhc", "hc", "hp", "hw", "mf", "mfs"]
+    utilities = ["ch", "dedup", "fhc", "hc", "hp", "hw", "mf", "mfs", "url_cleaner"]
 
     click.echo(
         click.style(
