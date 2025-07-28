@@ -118,6 +118,12 @@ pip install git+https://github.com/lkoepsel/lk_cli.git
 
 ## Using uv to install
 
+### On a non-development system:
+```bash
+uv tool install --python 3.12 git+https://github.com/lkoepsel/lk_cli.git
+```
+
+### On a development system (one in which you will make changes to lk_cli)
 The general sequence of commands are:
 ```bash
 # to install latest version
