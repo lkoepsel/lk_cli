@@ -93,19 +93,29 @@ mfs:
 #### Preferred Install using uv
 This version installs uv then using *uv* to install *lk_cli*, using *uv* is my new preferred method of adding python tools and packages
 ```bash
+# if uv is not installed
 cd
 curl -LsSf https://astral.sh/uv/install.sh | sh
 source $HOME/.cargo/env
+# install lk_cli
 uv tool install --from git+https://github.com/lkoepsel/lk_cli.git lk_cli
 ```
 
-#### Standard Install
+#### Upgrade
+```bash
+uv tool upgrade lk_cli
+```
+
+#### Standard Install (not recommended)
 ```bash
 venv lk_cli_env
+# bash or zsh
 source .venv/bin/activate
+# fish shell
 source .venv/bin/Activate.fish
 pip install git+https://github.com/lkoepsel/lk_cli.git
 ```
+
 
 ### 2. Tools Installed
 * **ch - Check Hash:** - read existing hash.json and .hashes.json files and confirm results of files
@@ -113,17 +123,12 @@ pip install git+https://github.com/lkoepsel/lk_cli.git
 * **hw - Hash Write:** Write hash of each file in folder to a hashes.json file in folder.
 * **mf - Missing File:** Compare two folders using hash of each file for comparison, uses multiprocessing for speed.
 * **mfs - Missing File Sequential:** Compare two folders using hash of each file for comparison. Sequential version, retained for checking against *mf*.
+* **uc - url_cleaner** Remove tracking information from url's
 
 ## Notes
 
-## Using uv to install
+## Using uv to install for development
 
-### On a non-development system:
-```bash
-uv tool install --python 3.12 git+https://github.com/lkoepsel/lk_cli.git
-```
-
-### On a development system (one in which you will make changes to lk_cli)
 The general sequence of commands are:
 ```bash
 # to install latest version
@@ -137,6 +142,6 @@ uvx ruff check
 git add -A
 git commit -m "message"
 git push
-# to install latest version
-uv pip install --upgrade git+https://github.com/lkoepsel/lk_cli.git
+# to upgrade to latest version
+uv tool upgrade lk_cli
 ```
