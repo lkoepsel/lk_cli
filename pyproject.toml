@@ -33,7 +33,7 @@ hw = "lk_cli.hw:hw"
 hp = "lk_cli.hp:hp"
 fhc = "lk_cli.fhc:fhc"
 hc = "lk_cli.hc:hc"
-url_cleaner = "lk_cli.url_cleaner:url_cleaner"
+uc = "lk_cli.uc:uc"
 lk_cli = "lk_cli.lk_cli:lk_cli"
 
 [tool.setuptools]

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-URL Cleaner - Remove tracking parameters from URLs
-Usage: python url_cleaner.py <url>
+UC - Remove tracking parameters from URLs
+Usage: python uc.py <url>
 """
 
 import click
@@ -10,7 +10,7 @@ from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
 
 
 def get_version():
-    """Get version for url_cleaner command."""
+    """Get version for uc command."""
     return "0.9.1"
 
 
@@ -119,17 +119,17 @@ def clean_url(url):
 
 
 @click.command()
-@click.version_option(get_version(), prog_name="url_cleaner")
+@click.version_option(get_version(), prog_name="uc")
 @click.argument('url', required=False)
 @click.option('-v', '--verbose', is_flag=True, help='Show both original and cleaned URLs')
 @click.option('--list-params', is_flag=True, help='List all tracking parameters that will be removed')
-def url_cleaner(url, verbose, list_params):
+def uc(url, verbose, list_params):
     """
     Remove tracking parameters from URLs.
     
     Examples:
-      url_cleaner "https://example.com/?utm_source=google&utm_medium=cpc&id=123"
-      url_cleaner "https://amazon.com/product?ref=sr_1_1&tag=affiliate123&psc=1"
+      uc "https://example.com/?utm_source=google&utm_medium=cpc&id=123"
+      uc "https://amazon.com/product?ref=sr_1_1&tag=affiliate123&psc=1"
       
     Common tracking parameters removed:
       UTM parameters (utm_source, utm_medium, etc.)
@@ -163,4 +163,4 @@ def url_cleaner(url, verbose, list_params):
 
 
 if __name__ == "__main__":
-    url_cleaner()
+    uc()
