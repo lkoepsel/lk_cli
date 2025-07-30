@@ -59,7 +59,7 @@ def get_version():
                 return data["project"]["version"]
         except Exception:
             # Method 3: Fallback to hardcoded version
-            return "0.9.0"
+            return "0.9.0.hc"
 
 
 def hash_file(filepath):

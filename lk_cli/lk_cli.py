@@ -16,7 +16,7 @@ def lk_cli():
         click.style(
             """
            Utilities and Their Descriptions:
-           (run lk_cli --help to see this list again)
+           (run lk_cli to see this list again)
            """,
             fg="green",
             bold=True,
