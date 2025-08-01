@@ -56,7 +56,7 @@ def display_results(missing_folders, changed_folders):
 @click.argument("folders", nargs=-1, type=click.Path(exists=True, file_okay=False))
 def ch(folders):
     """
-    ch: check hash - read existing hash.json and .hashes.josn files
+    ch: check hash - read existing hash.json and .hashes.json files
     and confirm hashes for files have not changed. Use to ensure
     hash files are in-sync with folder contents.
     """
