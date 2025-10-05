@@ -63,11 +63,16 @@ def get_version():
 
 def hash_file(filepath):
     """Generate xxHash64 of a file."""
-    hasher = xxhash.xxh64()
-    with open(filepath, "rb") as f:
-        for byte_block in iter(lambda: f.read(BLOCKSIZE), b""):
-            hasher.update(byte_block)
-    return hasher.hexdigest()
+    try:
+        hasher = xxhash.xxh64()
+        with open(filepath, "rb") as f:
+            for byte_block in iter(lambda: f.read(BLOCKSIZE), b""):
+                hasher.update(byte_block)
+        return hasher.hexdigest()
+    except (FileNotFoundError, OSError, PermissionError) as e:
+        # Handle broken symlinks, missing files, and permission errors
+        print(f"Warning: Skipping file '{filepath}': {e}")
+        return None
 
 
 def hash_folder(folder_path):
@@ -124,9 +129,18 @@ def process_file(root, folder_path, file):
     """Process a single file for hashing."""
     if not dot_file.match(file):
         filepath = os.path.join(root, file)
+        # Check if file exists and is not a broken symlink
+        if not os.path.exists(filepath):
+            if os.path.islink(filepath):
+                print(f"Warning: Skipping broken symlink '{filepath}'")
+            else:
+                print(f"Warning: Skipping missing file '{filepath}'")
+            return None
+        
         relpath = os.path.relpath(filepath, folder_path)
         file_hash = hash_file(filepath)
-        return file_hash, relpath
+        if file_hash is not None:  # Only return if hash was successful
+            return file_hash, relpath
     return None
 
 
