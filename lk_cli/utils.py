@@ -88,15 +88,22 @@ def hash_folder(folder_path):
 
 
 def hash_folder_mp(folder_path):
-    """Generate hashes for all files in a folder."""
+    """Generate hashes for all files in a folder using a single pool dispatch."""
+    all_filepaths = []
+    for root, _, files in os.walk(folder_path):
+        for file in files:
+            if not dot_file.match(file):
+                all_filepaths.append(os.path.join(root, file))
+
     hashes = {}
-    with Pool(CORES) as pool:
-        for root, _, files in os.walk(folder_path):
-            results = pool.map(partial(process_file, root, folder_path), files)
-            for result in results:
-                if result:
-                    file_hash, relpath = result
-                    hashes[file_hash] = relpath
+    if all_filepaths:
+        with Pool(CORES) as pool:
+            results = pool.map(partial(process_file, folder_path), all_filepaths)
+        for result in results:
+            if result:
+                file_hash, relpath = result
+                hashes[file_hash] = relpath
+
     return hashes, hash_hashes(hashes)
 
 
@@ -125,22 +132,18 @@ def last_modified_file(root_folder):
     return [last_modified_time, last_modified_file]
 
 
-def process_file(root, folder_path, file):
+def process_file(folder_path, filepath):
     """Process a single file for hashing."""
-    if not dot_file.match(file):
-        filepath = os.path.join(root, file)
-        # Check if file exists and is not a broken symlink
-        if not os.path.exists(filepath):
-            if os.path.islink(filepath):
-                print(f"Warning: Skipping broken symlink '{filepath}'")
-            else:
-                print(f"Warning: Skipping missing file '{filepath}'")
-            return None
-        
-        relpath = os.path.relpath(filepath, folder_path)
-        file_hash = hash_file(filepath)
-        if file_hash is not None:  # Only return if hash was successful
-            return file_hash, relpath
+    if not os.path.exists(filepath):
+        if os.path.islink(filepath):
+            print(f"Warning: Skipping broken symlink '{filepath}'")
+        else:
+            print(f"Warning: Skipping missing file '{filepath}'")
+        return None
+    relpath = os.path.relpath(filepath, folder_path)
+    file_hash = hash_file(filepath)
+    if file_hash is not None:
+        return file_hash, relpath
     return None
 
 
