@@ -35,8 +35,8 @@ def hc(folder1, folder2):
     try:
         for filehash, filename in hashes2.items():
             if filehash in hashes1:
-                if hashes1[hash] != filename:
-                    click.secho(f"{hash} does not match", fg="red")
+                if hashes1[filehash] != filename:
+                    click.secho(f"{filehash} does not match", fg="red")
                     no_match.append(filename)
             else:
                 click.secho(f"{filename}, is missing in, {folder2}", fg="magenta")

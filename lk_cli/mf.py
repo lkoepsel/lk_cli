@@ -1,5 +1,5 @@
 import click
-from lk_cli.utils import hash_folder_mp, get_version
+from lk_cli.utils import hash_folder_mp, get_version, get_pool
 
 
 @click.command()
@@ -13,8 +13,9 @@ def mf(folder1, folder2):
     xxHash64 for speed.
 
     """
-    folder1_hashes = hash_folder_mp(folder1)
-    folder2_hashes = hash_folder_mp(folder2)
+    with get_pool() as pool:
+        folder1_hashes = hash_folder_mp(folder1, pool=pool)
+        folder2_hashes = hash_folder_mp(folder2, pool=pool)
 
     missing_in_folder1 = []
     missing_in_folder2 = []

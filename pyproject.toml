@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "lk_cli"
-version = "0.9.3.0"
+version = "0.9.3.5"
 description = "Python utilities"
 readme = { file = "README.md", content-type = "text/markdown" }
 authors = [{ name = "Lief Koepsel", email = "lkoepsel@wellys.com" }]
@@ -20,6 +20,8 @@ classifiers = [
 ]
 dependencies = [
     "click>=8.0",
+    "Pillow>=10.0",
+    "pillow-heif>=0.18",
     "xxhash>=3.5.0",
 ]
 urls = { "Homepage" = "https://github.com/lkoepsel/lk_cli" }
@@ -28,12 +30,14 @@ urls = { "Homepage" = "https://github.com/lkoepsel/lk_cli" }
 ch = "lk_cli.ch:ch"
 dedup = "lk_cli.dedup:dedup"
 mf = "lk_cli.mf:mf"
+mf2 = "lk_cli.mf2:mf2"
 mfs = "lk_cli.mfs:mfs"
 hw = "lk_cli.hw:hw"
 hp = "lk_cli.hp:hp"
 fhc = "lk_cli.fhc:fhc"
 hc = "lk_cli.hc:hc"
 uc = "lk_cli.uc:uc"
+dbf = "lk_cli.dbf:dbf"
 lk_cli = "lk_cli.lk_cli:lk_cli"
 
 [tool.setuptools]

@@ -2,17 +2,18 @@ import json
 import os
 import re
 import xxhash
+from collections import defaultdict
 from multiprocessing import Pool
 from functools import partial
 import tomllib
 
 
 dot_file = re.compile(r"^\.")
-CORES = 8
+CORES = os.cpu_count() or 8
 BLOCKSIZE = 1048576
 
 
-def calculate_file_hash(file_path, chunk_size=8192):
+def calculate_file_hash(file_path, chunk_size=BLOCKSIZE):
     """Calculate xxHash64 hash of a file."""
     hasher = xxhash.xxh64()
     with open(file_path, "rb") as f:
@@ -87,24 +88,61 @@ def hash_folder(folder_path):
     return hashes
 
 
-def hash_folder_mp(folder_path):
-    """Generate hashes for all files in a folder using a single pool dispatch."""
+def get_pool():
+    """Return a Pool sized to CORES for use as a context manager."""
+    return Pool(CORES)
+
+
+def hash_files_for_dedup(folder_path):
+    """Hash all non-dot files in folder in parallel; return hash → [filepath, ...] map."""
     all_filepaths = []
     for root, _, files in os.walk(folder_path):
         for file in files:
-            if not dot_file.match(file):
+            if not file.startswith("."):
                 all_filepaths.append(os.path.join(root, file))
+
+    hash_to_files = defaultdict(list)
+    if all_filepaths:
+        with get_pool() as pool:
+            results = pool.map(hash_file, all_filepaths)
+        for filepath, file_hash in zip(all_filepaths, results):
+            if file_hash is not None:
+                hash_to_files[file_hash].append(filepath)
+
+    return hash_to_files
+
+
+def hash_folder_mp(folder_path, pool=None):
+    """Generate hashes for all files in a folder using a single pool dispatch."""
+    all_filepaths = []
+    last_mtime = 0
+    last_mpath = None
+    for root, _, files in os.walk(folder_path):
+        for file in files:
+            filepath = os.path.join(root, file)
+            try:
+                mtime = os.path.getmtime(filepath)
+                if mtime > last_mtime:
+                    last_mtime = mtime
+                    last_mpath = filepath
+            except OSError:
+                pass
+            if not dot_file.match(file):
+                all_filepaths.append(filepath)
 
     hashes = {}
     if all_filepaths:
-        with Pool(CORES) as pool:
+        if pool is not None:
             results = pool.map(partial(process_file, folder_path), all_filepaths)
+        else:
+            with Pool(CORES) as p:
+                results = p.map(partial(process_file, folder_path), all_filepaths)
         for result in results:
             if result:
                 file_hash, relpath = result
                 hashes[file_hash] = relpath
 
-    return hashes, hash_hashes(hashes)
+    return hashes, hash_hashes(hashes), [last_mtime, last_mpath]
 
 
 def hash_hashes(hashes):

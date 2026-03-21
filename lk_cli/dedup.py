@@ -1,8 +1,7 @@
 import click
 import os
 import shutil
-from collections import defaultdict
-from lk_cli.utils import hash_file, get_version
+from lk_cli.utils import get_version, hash_files_for_dedup
 
 
 @click.command()
@@ -20,19 +19,7 @@ def dedup(folder, dry_run):
     The most recent file is kept and duplicates are moved to DUPLICATES_DELETE folder on Desktop.
     """
     # Get hashes for all files in the folder and group by hash
-    hash_to_files = defaultdict(list)
-
-    for root, _, files in os.walk(folder):
-        for file in files:
-            # Skip dot files
-            if not file.startswith("."):
-                filepath = os.path.join(root, file)
-                try:
-                    file_hash = hash_file(filepath)
-                    hash_to_files[file_hash].append(filepath)
-                except OSError as e:
-                    click.echo(click.style(f"Error reading {filepath}: {e}", fg="red"))
-                    continue
+    hash_to_files = hash_files_for_dedup(folder)
 
     # Find duplicates (hashes with more than one file)
     duplicates = {h: files for h, files in hash_to_files.items() if len(files) > 1}
