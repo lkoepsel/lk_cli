@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "lk_cli"
-version = "0.9.3.5"
+version = "0.9.3.6"
 description = "Python utilities"
 readme = { file = "README.md", content-type = "text/markdown" }
 authors = [{ name = "Lief Koepsel", email = "lkoepsel@wellys.com" }]
@@ -38,6 +38,7 @@ fhc = "lk_cli.fhc:fhc"
 hc = "lk_cli.hc:hc"
 uc = "lk_cli.uc:uc"
 dbf = "lk_cli.dbf:dbf"
+dbc = "lk_cli.dbc:dbc"
 lk_cli = "lk_cli.lk_cli:lk_cli"
 
 [tool.setuptools]
