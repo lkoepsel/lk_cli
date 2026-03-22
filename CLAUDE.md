@@ -38,7 +38,7 @@ uv tool install --reinstall --from . lk_cli
 
 ### Entry Points
 
-13 standalone CLI commands, each in its own module:
+14 standalone CLI commands, each in its own module:
 
 | Command | Module | Purpose |
 |---------|--------|---------|
@@ -54,6 +54,7 @@ uv tool install --reinstall --from . lk_cli
 | `uc` | uc.py | URL Cleaner — strip tracking parameters from URLs |
 | `dbf` | dbf.py | Database Files — build SQLite DB of image files with hash and EXIF data |
 | `dbc` | dbc.py | Database Compare — find images in folder2's DB missing from folder1's DB |
+| `dbi` | dbi.py | Database Image Inspector — interactively review missing images from a dbc results file |
 
 `lk_cli.py` is a master help command that dynamically imports each module and displays its docstring.
 
