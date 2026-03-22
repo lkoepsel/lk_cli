@@ -28,6 +28,18 @@ def make_image_with_exif(path, date_time="2024:01:15 10:30:00", model="TestCamer
     return path
 
 
+def make_image_with_subsec(path, date_time="2024:01:15 10:30:00", model="BurstCam", subsec="50"):
+    """Create a JPEG with DateTimeOriginal, Model, and SubSecTimeOriginal EXIF fields."""
+    img = Image.new("RGB", (20, 20), color="green")
+    exif = img.getexif()
+    exif[272] = model
+    ifd = exif.get_ifd(0x8769)
+    ifd[36867] = date_time
+    ifd[37521] = subsec   # SubSecTimeOriginal
+    img.save(path, "JPEG", exif=exif.tobytes())
+    return path
+
+
 def open_db(folder):
     return sqlite3.connect(os.path.join(folder, DB_NAME))
 
@@ -51,11 +63,25 @@ class TestDbfCreation:
         conn = open_db(str(tmp_path))
         cols = {row[1] for row in conn.execute("PRAGMA table_info(files)")}
         conn.close()
-        assert cols == {"hash", "name", "created_at", "camera_model"}
+        assert cols == {
+            "hash", "name", "created_at", "camera_model",
+            "subsec_time", "image_width", "image_height", "file_size",
+            "image_unique_id", "camera_serial", "phash",
+        }
 
     def test_empty_folder_produces_no_db(self, tmp_path):
         invoke(tmp_path)
         assert not os.path.exists(str(tmp_path / DB_NAME))
+
+    def test_rerun_replaces_existing_db(self, tmp_path):
+        make_plain_image(str(tmp_path / "a.jpg"))
+        invoke(tmp_path)
+        make_plain_image(str(tmp_path / "b.jpg"))
+        invoke(tmp_path)
+        conn = open_db(str(tmp_path))
+        count = conn.execute("SELECT COUNT(*) FROM files").fetchone()[0]
+        conn.close()
+        assert count == 2  # only two images, not three from two runs
 
 
 class TestImageRecording:
@@ -114,6 +140,87 @@ class TestExifData:
         conn.close()
         assert row[0] is None
         assert row[1] is None
+
+    def test_subsec_time_stored_when_present(self, tmp_path):
+        path = make_image_with_subsec(str(tmp_path / "burst.jpg"), subsec="75")
+        invoke(tmp_path)
+        conn = open_db(str(tmp_path))
+        row = conn.execute(
+            "SELECT subsec_time FROM files WHERE name = ?", (path,)
+        ).fetchone()
+        conn.close()
+        assert row[0] == "75"
+
+    def test_subsec_time_null_without_exif(self, tmp_path):
+        path = make_plain_image(str(tmp_path / "plain.jpg"))
+        invoke(tmp_path)
+        conn = open_db(str(tmp_path))
+        row = conn.execute(
+            "SELECT subsec_time FROM files WHERE name = ?", (path,)
+        ).fetchone()
+        conn.close()
+        assert row[0] is None
+
+
+class TestNewFields:
+    def test_phash_stored_and_non_null(self, tmp_path):
+        path = make_plain_image(str(tmp_path / "a.jpg"))
+        invoke(tmp_path)
+        conn = open_db(str(tmp_path))
+        row = conn.execute(
+            "SELECT phash FROM files WHERE name = ?", (path,)
+        ).fetchone()
+        conn.close()
+        assert row[0] is not None
+        assert len(row[0]) > 0
+
+    def test_phash_is_valid_hex(self, tmp_path):
+        import imagehash
+        make_plain_image(str(tmp_path / "a.jpg"))
+        invoke(tmp_path)
+        conn = open_db(str(tmp_path))
+        ph = conn.execute("SELECT phash FROM files").fetchone()[0]
+        conn.close()
+        # Should be parseable by imagehash without error
+        imagehash.hex_to_hash(ph)
+
+    def test_dimensions_stored_correctly(self, tmp_path):
+        img = Image.new("RGB", (640, 480), color="red")
+        path = str(tmp_path / "sized.jpg")
+        img.save(path, "JPEG")
+        invoke(tmp_path)
+        conn = open_db(str(tmp_path))
+        row = conn.execute(
+            "SELECT image_width, image_height FROM files WHERE name = ?", (path,)
+        ).fetchone()
+        conn.close()
+        assert row[0] == 640
+        assert row[1] == 480
+
+    def test_file_size_stored_correctly(self, tmp_path):
+        path = make_plain_image(str(tmp_path / "a.jpg"))
+        invoke(tmp_path)
+        expected_size = os.path.getsize(path)
+        conn = open_db(str(tmp_path))
+        row = conn.execute(
+            "SELECT file_size FROM files WHERE name = ?", (path,)
+        ).fetchone()
+        conn.close()
+        assert row[0] == expected_size
+
+    def test_identical_content_has_zero_phash_distance(self, tmp_path):
+        import imagehash
+        # Save the same image twice — identical visual content must yield distance 0
+        img = Image.new("RGB", (64, 64), color="red")
+        img.save(str(tmp_path / "a.jpg"), "JPEG")
+        img.save(str(tmp_path / "b.jpg"), "JPEG")
+        invoke(tmp_path)
+        conn = open_db(str(tmp_path))
+        hashes = [r[0] for r in conn.execute("SELECT phash FROM files ORDER BY name")]
+        conn.close()
+        h1 = imagehash.hex_to_hash(hashes[0])
+        h2 = imagehash.hex_to_hash(hashes[1])
+        assert (h1 - h2) == 0
 
 
 class TestNonImageHandling:
