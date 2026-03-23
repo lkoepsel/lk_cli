@@ -1,4 +1,5 @@
 import click
+import os
 from lk_cli.utils import hash_folder_mp, get_version, get_pool
 
 
@@ -27,7 +28,7 @@ def mf(folder1, folder2):
     if len(missing_in_folder2) > 0:
         click.echo(f"Missing in {folder2}")
         for file in missing_in_folder2:
-            click.echo(f"{file}")
+            click.echo(os.path.join(folder1, file))
     else:
         click.echo(f"No files missing in {folder2}")
 
@@ -38,6 +39,6 @@ def mf(folder1, folder2):
     if len(missing_in_folder1) > 0:
         click.echo(f"Missing in {folder1}")
         for file in missing_in_folder1:
-            click.echo(f"{file}")
+            click.echo(os.path.join(folder2, file))
     else:
         click.echo(f"No files missing in {folder1}")

@@ -6,14 +6,14 @@ from unittest.mock import patch, call, MagicMock
 
 # ── helpers ───────────────────────────────────────────────────────────────────
 
-def make_output_file(path, missing=None):
+def make_output_file(path, missing=None, folder2="/f2"):
     """Create a minimal dbc-style results file."""
     missing = missing or []
     lines = [
         "dbc Results",
         "Generated:           2026-01-01 00:00:00",
         "Folder1 (reference): /f1",
-        "Folder2 (checked):   /f2",
+        f"Folder2 (checked):   {folder2}",
         "",
         "Summary",
         "-" * 50,
@@ -330,3 +330,148 @@ class TestDbiSummary:
         f = make_output_file(str(tmp_path / "out.txt"), missing=[str(img1), str(img2)])
         result = invoke(f, keys="q")
         assert "remaining" in result.output
+
+    def test_summary_includes_saved_count(self, tmp_path):
+        folder2 = tmp_path / "folder2"
+        dated = folder2 / "2024_06_15"
+        dated.mkdir(parents=True)
+        img = dated / "photo.jpg"
+        img.write_bytes(b"data")
+        f = make_output_file(
+            str(tmp_path / "out.txt"), missing=[str(img)], folder2=str(folder2)
+        )
+        with patch("lk_cli.dbi.show_image"):
+            with patch("click.getchar", side_effect=["s"]):
+                result = CliRunner().invoke(
+                    __import__("lk_cli.dbi", fromlist=["dbi"]).dbi, [str(f)]
+                )
+        assert "1 saved" in result.output
+
+
+# ── parse_folder2 ─────────────────────────────────────────────────────────────
+
+class TestParseFolder2:
+    def test_returns_folder2_path(self, tmp_path):
+        f = make_output_file(str(tmp_path / "out.txt"), folder2="/path/to/photos")
+        from lk_cli.dbi import parse_folder2
+        assert parse_folder2(f) == "/path/to/photos"
+
+    def test_returns_none_when_not_found(self, tmp_path):
+        f = tmp_path / "out.txt"
+        f.write_text("dbc Results\n\nSummary\n")
+        from lk_cli.dbi import parse_folder2
+        assert parse_folder2(str(f)) is None
+
+    def test_handles_path_with_spaces(self, tmp_path):
+        f = make_output_file(str(tmp_path / "out.txt"), folder2="/my photos/2024")
+        from lk_cli.dbi import parse_folder2
+        assert parse_folder2(f) == "/my photos/2024"
+
+
+# ── save_image ────────────────────────────────────────────────────────────────
+
+class TestSaveImage:
+    def test_moves_file_to_saved_dated_dir(self, tmp_path):
+        from lk_cli.dbi import save_image
+        folder2 = tmp_path / "folder2"
+        dated = folder2 / "2024_06_15"
+        dated.mkdir(parents=True)
+        img = dated / "photo.jpg"
+        img.write_bytes(b"data")
+        save_image(str(img), str(folder2))
+        assert (tmp_path / "Saved" / "2024_06_15" / "photo.jpg").exists()
+
+    def test_original_no_longer_exists(self, tmp_path):
+        from lk_cli.dbi import save_image
+        folder2 = tmp_path / "folder2"
+        dated = folder2 / "2024_06_15"
+        dated.mkdir(parents=True)
+        img = dated / "photo.jpg"
+        img.write_bytes(b"data")
+        save_image(str(img), str(folder2))
+        assert not img.exists()
+
+    def test_saved_alongside_folder2(self, tmp_path):
+        from lk_cli.dbi import save_image
+        parent = tmp_path / "photos"
+        folder2 = parent / "new_shots"
+        dated = folder2 / "2023_12_01"
+        dated.mkdir(parents=True)
+        img = dated / "a.jpg"
+        img.write_bytes(b"data")
+        save_image(str(img), str(folder2))
+        assert (parent / "Saved" / "2023_12_01" / "a.jpg").exists()
+
+
+# ── command: save behaviour ───────────────────────────────────────────────────
+
+class TestDbiSave:
+    def _setup(self, tmp_path):
+        folder2 = tmp_path / "folder2"
+        dated = folder2 / "2024_06_15"
+        dated.mkdir(parents=True)
+        img = dated / "photo.jpg"
+        img.write_bytes(b"data")
+        f = make_output_file(
+            str(tmp_path / "out.txt"), missing=[str(img)], folder2=str(folder2)
+        )
+        return img, f, folder2
+
+    def test_s_moves_file_to_saved(self, tmp_path):
+        img, f, folder2 = self._setup(tmp_path)
+        with patch("lk_cli.dbi.show_image"):
+            with patch("click.getchar", side_effect=["s"]):
+                CliRunner().invoke(
+                    __import__("lk_cli.dbi", fromlist=["dbi"]).dbi, [str(f)]
+                )
+        assert (tmp_path / "Saved" / "2024_06_15" / "photo.jpg").exists()
+        assert not img.exists()
+
+    def test_s_removes_line_from_output_file(self, tmp_path):
+        img, f, folder2 = self._setup(tmp_path)
+        with patch("lk_cli.dbi.show_image"):
+            with patch("click.getchar", side_effect=["s"]):
+                CliRunner().invoke(
+                    __import__("lk_cli.dbi", fromlist=["dbi"]).dbi, [str(f)]
+                )
+        from lk_cli.dbi import parse_missing_files
+        assert parse_missing_files(f) == []
+
+    def test_s_shows_saved_message(self, tmp_path):
+        img, f, folder2 = self._setup(tmp_path)
+        with patch("lk_cli.dbi.show_image"):
+            with patch("click.getchar", side_effect=["s"]):
+                result = CliRunner().invoke(
+                    __import__("lk_cli.dbi", fromlist=["dbi"]).dbi, [str(f)]
+                )
+        assert "saved" in result.output.lower()
+
+    def test_s_terminates_process(self, tmp_path):
+        img, f, folder2 = self._setup(tmp_path)
+        mock_proc = MagicMock()
+        with patch("lk_cli.dbi.show_image", return_value=mock_proc):
+            with patch("click.getchar", side_effect=["s"]):
+                CliRunner().invoke(
+                    __import__("lk_cli.dbi", fromlist=["dbi"]).dbi, [str(f)]
+                )
+        mock_proc.terminate.assert_called_once()
+
+    def test_s_continues_to_next_file(self, tmp_path):
+        folder2 = tmp_path / "folder2"
+        dated = folder2 / "2024_06_15"
+        dated.mkdir(parents=True)
+        img1 = dated / "a.jpg"
+        img1.write_bytes(b"data")
+        img2 = dated / "b.jpg"
+        img2.write_bytes(b"data")
+        f = make_output_file(
+            str(tmp_path / "out.txt"),
+            missing=[str(img1), str(img2)],
+            folder2=str(folder2),
+        )
+        with patch("lk_cli.dbi.show_image") as mock_show:
+            with patch("click.getchar", side_effect=["s", "l"]):
+                CliRunner().invoke(
+                    __import__("lk_cli.dbi", fromlist=["dbi"]).dbi, [str(f)]
+                )
+        assert mock_show.call_count == 2

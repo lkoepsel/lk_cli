@@ -40,7 +40,7 @@ wheels = [
 
 [[package]]
 name = "lk-cli"
-version = "0.9.4.1"
+version = "0.9.4.3"
 source = { editable = "." }
 dependencies = [
     { name = "click" },

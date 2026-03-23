@@ -1,4 +1,5 @@
 import click
+import os
 from lk_cli.utils import hash_folder_mp, get_version, get_pool
 
 
@@ -26,6 +27,6 @@ def mf2(folder1, folder2):
     if missing:
         click.echo(f"Files in {folder2} not found in {folder1}:")
         for file in sorted(missing):
-            click.echo(f"  {file}")
+            click.echo(f"  {os.path.join(folder2, file)}")
     else:
         click.echo(f"All files in {folder2} exist in {folder1}")
