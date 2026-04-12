@@ -5,12 +5,60 @@ import xxhash
 from collections import defaultdict
 from multiprocessing import Pool
 from functools import partial
+from typing import NamedTuple, Optional
 import tomllib
 
 
 dot_file = re.compile(r"^\.")
 CORES = os.cpu_count() or 8
 BLOCKSIZE = 1048576
+DB_NAME = ".dbf.db"
+
+
+class ImageRecord(NamedTuple):
+    """One row from a dbf database, with all fields accessible by name."""
+    hash: Optional[str]
+    name: Optional[str]
+    created_at: Optional[str] = None
+    camera_model: Optional[str] = None
+    subsec_time: Optional[str] = None
+    image_width: Optional[int] = None
+    image_height: Optional[int] = None
+    file_size: Optional[int] = None
+    image_unique_id: Optional[str] = None
+    camera_serial: Optional[str] = None
+    phash: Optional[str] = None
+    memory_card_number: Optional[str] = None
+    image_hash: Optional[str] = None
+
+
+def create_db_schema(conn):
+    """Create (or replace) the files and meta tables in a dbf database."""
+    conn.execute("DROP TABLE IF EXISTS files")
+    conn.execute("""
+        CREATE TABLE files (
+            hash             TEXT,
+            name             TEXT,
+            created_at       TEXT,
+            camera_model     TEXT,
+            subsec_time      TEXT,
+            image_width      INTEGER,
+            image_height     INTEGER,
+            file_size        INTEGER,
+            image_unique_id      TEXT,
+            camera_serial        TEXT,
+            phash                TEXT,
+            memory_card_number   TEXT,
+            image_hash           TEXT
+        )
+    """)
+    conn.execute("DROP TABLE IF EXISTS meta")
+    conn.execute("""
+        CREATE TABLE meta (
+            key   TEXT PRIMARY KEY,
+            value TEXT
+        )
+    """)
 
 
 def calculate_file_hash(file_path, chunk_size=BLOCKSIZE):

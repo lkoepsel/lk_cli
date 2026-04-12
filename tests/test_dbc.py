@@ -5,6 +5,7 @@ import pytest
 from unittest.mock import patch, MagicMock
 from click.testing import CliRunner
 from PIL import Image
+from lk_cli.utils import ImageRecord
 
 
 DB_NAME = ".dbf.db"
@@ -13,30 +14,19 @@ DB_NAME = ".dbf.db"
 # ── helpers ───────────────────────────────────────────────────────────────────
 
 def make_db(folder, records):
-    """Create a .dbf.db with the full 11-column schema.
+    """Create a .dbf.db using the shared schema from utils.
 
-    Records may be 4-tuples (hash, name, created_at, camera_model) or full
-    11-tuples. Short records are right-padded with None.
+    Records may be ImageRecord instances, short tuples, or any iterable.
+    Short records are right-padded with None to match ImageRecord field count.
     """
+    from lk_cli.utils import create_db_schema, ImageRecord
+    n = len(ImageRecord._fields)
     db_path = os.path.join(str(folder), DB_NAME)
     conn = sqlite3.connect(db_path)
-    conn.execute("""
-        CREATE TABLE files (
-            hash             TEXT,
-            name             TEXT,
-            created_at       TEXT,
-            camera_model     TEXT,
-            subsec_time      TEXT,
-            image_width      INTEGER,
-            image_height     INTEGER,
-            file_size        INTEGER,
-            image_unique_id  TEXT,
-            camera_serial    TEXT,
-            phash            TEXT
-        )
-    """)
-    padded = [tuple(r) + (None,) * (11 - len(r)) for r in records]
-    conn.executemany("INSERT INTO files VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", padded)
+    create_db_schema(conn)
+    placeholders = ", ".join("?" * n)
+    padded = [tuple(r) + (None,) * (n - len(r)) for r in records]
+    conn.executemany(f"INSERT INTO files VALUES ({placeholders})", padded)
     conn.commit()
     conn.close()
     return db_path
@@ -57,6 +47,45 @@ def invoke(folder1, folder2, output=None):
     return CliRunner().invoke(dbc, [str(folder1), str(folder2), "--output", str(output)])
 
 
+# ── ImageRecord ──────────────────────────────────────────────────────────────
+
+class TestImageRecord:
+    def test_importable_from_utils(self):
+        from lk_cli.utils import ImageRecord
+        assert ImageRecord is not None
+
+    def test_has_expected_fields(self):
+        from lk_cli.utils import ImageRecord
+        assert ImageRecord._fields == (
+            "hash", "name", "created_at", "camera_model", "subsec_time",
+            "image_width", "image_height", "file_size",
+            "image_unique_id", "camera_serial", "phash", "memory_card_number",
+            "image_hash",
+        )
+
+    def test_load_db_returns_image_records(self, tmp_path):
+        from lk_cli.dbc import load_db
+        from lk_cli.utils import ImageRecord
+        make_db(tmp_path, [("hash1", "/f1/a.jpg", None, None)])
+        records = load_db(str(tmp_path / DB_NAME))
+        assert isinstance(records[0], ImageRecord)
+
+    def test_image_record_fields_accessible_by_name(self, tmp_path):
+        from lk_cli.dbc import load_db
+        make_db(tmp_path, [("hash1", "/f1/a.jpg", "2024:01:01", "Canon")])
+        record = load_db(str(tmp_path / DB_NAME))[0]
+        assert record.hash == "hash1"
+        assert record.name == "/f1/a.jpg"
+        assert record.created_at == "2024:01:01"
+        assert record.camera_model == "Canon"
+
+    def test_optional_fields_default_to_none(self):
+        from lk_cli.utils import ImageRecord
+        r = ImageRecord(hash="h", name="/f/a.jpg")
+        assert r.created_at is None
+        assert r.phash is None
+
+
 # ── compare_records unit tests ────────────────────────────────────────────────
 
 class TestCompareRecords:
@@ -65,73 +94,73 @@ class TestCompareRecords:
         return compare_records(db1, db2, threshold)
 
     def test_hash_match_not_missing(self):
-        db1 = [("abc123", "/f1/photo.jpg", "2024:01:01 10:00:00", "Canon")]
-        db2 = [("abc123", "/f2/photo.jpg", "2024:01:01 10:00:00", "Canon")]
-        missing, exif_only, phash_only = self._compare(db1, db2)
+        db1 = [ImageRecord("abc123", "/f1/photo.jpg", "2024:01:01 10:00:00", "Canon")]
+        db2 = [ImageRecord("abc123", "/f2/photo.jpg", "2024:01:01 10:00:00", "Canon")]
+        missing, image_only, exif_only, phash_only = self._compare(db1, db2)
         assert missing == []
         assert exif_only == []
         assert phash_only == []
 
     def test_different_hash_no_exif_is_missing(self):
-        db1 = [("hash1", "/f1/a.jpg", None, None)]
-        db2 = [("hash2", "/f2/b.jpg", None, None)]
-        missing, exif_only, _ = self._compare(db1, db2)
+        db1 = [ImageRecord("hash1", "/f1/a.jpg")]
+        db2 = [ImageRecord("hash2", "/f2/b.jpg")]
+        missing, image_only, exif_only, _ = self._compare(db1, db2)
         assert "/f2/b.jpg" in missing
         assert exif_only == []
 
     def test_exif_match_not_in_missing(self):
-        db1 = [("hash1", "/f1/a.jpg", "2024:06:21 08:15:00", "Canon EOS R5")]
-        db2 = [("hash2", "/f2/b.jpg", "2024:06:21 08:15:00", "Canon EOS R5")]
-        missing, exif_only, _ = self._compare(db1, db2)
+        db1 = [ImageRecord("hash1", "/f1/a.jpg", "2024:06:21 08:15:00", "Canon EOS R5")]
+        db2 = [ImageRecord("hash2", "/f2/b.jpg", "2024:06:21 08:15:00", "Canon EOS R5")]
+        missing, image_only, exif_only, _ = self._compare(db1, db2)
         assert missing == []
         assert len(exif_only) == 1
         assert exif_only[0][0] == "/f2/b.jpg"
 
     def test_exif_match_records_db1_name(self):
-        db1 = [("hash1", "/f1/original.jpg", "2024:06:21 08:15:00", "Canon EOS R5")]
-        db2 = [("hash2", "/f2/copy.jpg", "2024:06:21 08:15:00", "Canon EOS R5")]
-        _, exif_only, _ = self._compare(db1, db2)
-        assert exif_only[0] == ("/f2/copy.jpg", "/f1/original.jpg")
+        db1 = [ImageRecord("hash1", "/f1/original.jpg", "2024:06:21 08:15:00", "Canon EOS R5")]
+        db2 = [ImageRecord("hash2", "/f2/copy.jpg", "2024:06:21 08:15:00", "Canon EOS R5")]
+        _, image_only, exif_only, _ = self._compare(db1, db2)
+        assert exif_only[0][:2] == ("/f2/copy.jpg", "/f1/original.jpg")
 
     def test_null_created_at_not_exif_matched(self):
-        db1 = [("hash1", "/f1/a.jpg", "2024:06:21 08:15:00", "Canon EOS R5")]
-        db2 = [("hash2", "/f2/b.jpg", None, "Canon EOS R5")]
-        missing, exif_only, _ = self._compare(db1, db2)
+        db1 = [ImageRecord("hash1", "/f1/a.jpg", "2024:06:21 08:15:00", "Canon EOS R5")]
+        db2 = [ImageRecord("hash2", "/f2/b.jpg", created_at=None, camera_model="Canon EOS R5")]
+        missing, image_only, exif_only, _ = self._compare(db1, db2)
         assert "/f2/b.jpg" in missing
         assert exif_only == []
 
     def test_null_camera_model_not_exif_matched(self):
-        db1 = [("hash1", "/f1/a.jpg", "2024:06:21 08:15:00", "Canon EOS R5")]
-        db2 = [("hash2", "/f2/b.jpg", "2024:06:21 08:15:00", None)]
-        missing, exif_only, _ = self._compare(db1, db2)
+        db1 = [ImageRecord("hash1", "/f1/a.jpg", "2024:06:21 08:15:00", "Canon EOS R5")]
+        db2 = [ImageRecord("hash2", "/f2/b.jpg", "2024:06:21 08:15:00", camera_model=None)]
+        missing, image_only, exif_only, _ = self._compare(db1, db2)
         assert "/f2/b.jpg" in missing
         assert exif_only == []
 
     def test_empty_db1_all_missing(self):
         db1 = []
-        db2 = [("hash1", "/f2/a.jpg", None, None), ("hash2", "/f2/b.jpg", None, None)]
-        missing, _, _ = self._compare(db1, db2)
+        db2 = [ImageRecord("hash1", "/f2/a.jpg"), ImageRecord("hash2", "/f2/b.jpg")]
+        missing, _, _, _ = self._compare(db1, db2)
         assert len(missing) == 2
 
     def test_empty_db2_nothing_missing(self):
-        db1 = [("hash1", "/f1/a.jpg", None, None)]
+        db1 = [ImageRecord("hash1", "/f1/a.jpg")]
         db2 = []
-        missing, exif_only, phash_only = self._compare(db1, db2)
+        missing, image_only, exif_only, phash_only = self._compare(db1, db2)
         assert missing == []
         assert exif_only == []
         assert phash_only == []
 
     def test_partial_match_mixed(self):
         db1 = [
-            ("hash1", "/f1/a.jpg", None, None),
-            ("hash2", "/f1/b.jpg", "2024:01:01 10:00:00", "Sony A7"),
+            ImageRecord("hash1", "/f1/a.jpg"),
+            ImageRecord("hash2", "/f1/b.jpg", "2024:01:01 10:00:00", "Sony A7"),
         ]
         db2 = [
-            ("hash1", "/f2/a.jpg", None, None),                          # hash match
-            ("hash3", "/f2/b.jpg", "2024:01:01 10:00:00", "Sony A7"),   # exif match
-            ("hash4", "/f2/c.jpg", None, None),                          # missing
+            ImageRecord("hash1", "/f2/a.jpg"),                                          # hash match
+            ImageRecord("hash3", "/f2/b.jpg", "2024:01:01 10:00:00", "Sony A7"),        # exif match
+            ImageRecord("hash4", "/f2/c.jpg"),                                          # missing
         ]
-        missing, exif_only, _ = self._compare(db1, db2)
+        missing, image_only, exif_only, _ = self._compare(db1, db2)
         assert missing == ["/f2/c.jpg"]
         assert len(exif_only) == 1
         assert exif_only[0][0] == "/f2/b.jpg"
@@ -140,24 +169,24 @@ class TestCompareRecords:
 
     def test_subsec_disambiguates_burst_shots(self):
         # Same camera, same second, different sub-second → no EXIF match
-        db1 = [("hash1", "/f1/a.jpg", "2024:01:01 10:00:00", "Canon", "05")]
-        db2 = [("hash2", "/f2/b.jpg", "2024:01:01 10:00:00", "Canon", "06")]
-        missing, exif_only, _ = self._compare(db1, db2)
+        db1 = [ImageRecord("hash1", "/f1/a.jpg", "2024:01:01 10:00:00", "Canon", "05")]
+        db2 = [ImageRecord("hash2", "/f2/b.jpg", "2024:01:01 10:00:00", "Canon", "06")]
+        missing, image_only, exif_only, _ = self._compare(db1, db2)
         assert "/f2/b.jpg" in missing
         assert exif_only == []
 
     def test_subsec_match_when_same(self):
-        db1 = [("hash1", "/f1/a.jpg", "2024:01:01 10:00:00", "Canon", "05")]
-        db2 = [("hash2", "/f2/b.jpg", "2024:01:01 10:00:00", "Canon", "05")]
-        missing, exif_only, _ = self._compare(db1, db2)
+        db1 = [ImageRecord("hash1", "/f1/a.jpg", "2024:01:01 10:00:00", "Canon", "05")]
+        db2 = [ImageRecord("hash2", "/f2/b.jpg", "2024:01:01 10:00:00", "Canon", "05")]
+        missing, image_only, exif_only, _ = self._compare(db1, db2)
         assert missing == []
         assert len(exif_only) == 1
 
     def test_both_null_subsec_still_exif_matches(self):
         # Cameras without subsec: both None → still match on (model, time, None)
-        db1 = [("hash1", "/f1/a.jpg", "2024:01:01 10:00:00", "Sony A7", None)]
-        db2 = [("hash2", "/f2/b.jpg", "2024:01:01 10:00:00", "Sony A7", None)]
-        missing, exif_only, _ = self._compare(db1, db2)
+        db1 = [ImageRecord("hash1", "/f1/a.jpg", "2024:01:01 10:00:00", "Sony A7")]
+        db2 = [ImageRecord("hash2", "/f2/b.jpg", "2024:01:01 10:00:00", "Sony A7")]
+        missing, image_only, exif_only, _ = self._compare(db1, db2)
         assert missing == []
         assert len(exif_only) == 1
 
@@ -166,9 +195,9 @@ class TestCompareRecords:
     def test_phash_match_not_missing(self):
         # Same visual content (identical pHash), different byte hash and no EXIF
         p = ph("red")
-        db1 = [("hash1", "/f1/a.jpg", None, None, None, None, None, None, None, None, p)]
-        db2 = [("hash2", "/f2/b.jpg", None, None, None, None, None, None, None, None, p)]
-        missing, exif_only, phash_only = self._compare(db1, db2)
+        db1 = [ImageRecord("hash1", "/f1/a.jpg", phash=p)]
+        db2 = [ImageRecord("hash2", "/f2/b.jpg", phash=p)]
+        missing, image_only, exif_only, phash_only = self._compare(db1, db2)
         assert missing == []
         assert exif_only == []
         assert len(phash_only) == 1
@@ -176,18 +205,18 @@ class TestCompareRecords:
 
     def test_phash_match_records_distance(self):
         p = ph("blue")
-        db1 = [("hash1", "/f1/a.jpg", None, None, None, None, None, None, None, None, p)]
-        db2 = [("hash2", "/f2/b.jpg", None, None, None, None, None, None, None, None, p)]
-        _, _, phash_only = self._compare(db1, db2)
+        db1 = [ImageRecord("hash1", "/f1/a.jpg", phash=p)]
+        db2 = [ImageRecord("hash2", "/f2/b.jpg", phash=p)]
+        _, _, _, phash_only = self._compare(db1, db2)
         assert phash_only[0][2] == 0   # identical images: distance 0
 
     def test_phash_mismatch_is_missing(self):
         # Very different images exceed threshold
         p1 = ph("red")
         p2 = ph("blue")
-        db1 = [("hash1", "/f1/a.jpg", None, None, None, None, None, None, None, None, p1)]
-        db2 = [("hash2", "/f2/b.jpg", None, None, None, None, None, None, None, None, p2)]
-        missing, _, phash_only = self._compare(db1, db2, threshold=5)
+        db1 = [ImageRecord("hash1", "/f1/a.jpg", phash=p1)]
+        db2 = [ImageRecord("hash2", "/f2/b.jpg", phash=p2)]
+        missing, _, _, phash_only = self._compare(db1, db2, threshold=5)
         # red vs blue solid images typically differ significantly
         if phash_only:
             assert phash_only[0][2] <= 5
@@ -197,17 +226,17 @@ class TestCompareRecords:
     def test_phash_null_falls_through_to_missing(self):
         # db2 image has no pHash (e.g., older db entry) → must be missing
         p = ph("green")
-        db1 = [("hash1", "/f1/a.jpg", None, None, None, None, None, None, None, None, p)]
-        db2 = [("hash2", "/f2/b.jpg", None, None, None, None, None, None, None, None, None)]
-        missing, _, phash_only = self._compare(db1, db2)
+        db1 = [ImageRecord("hash1", "/f1/a.jpg", phash=p)]
+        db2 = [ImageRecord("hash2", "/f2/b.jpg")]
+        missing, _, _, phash_only = self._compare(db1, db2)
         assert "/f2/b.jpg" in missing
         assert phash_only == []
 
     def test_hash_match_takes_priority_over_phash(self):
         p = ph("red")
-        db1 = [("hash1", "/f1/a.jpg", None, None, None, None, None, None, None, None, p)]
-        db2 = [("hash1", "/f2/b.jpg", None, None, None, None, None, None, None, None, p)]
-        missing, exif_only, phash_only = self._compare(db1, db2)
+        db1 = [ImageRecord("hash1", "/f1/a.jpg", phash=p)]
+        db2 = [ImageRecord("hash1", "/f2/b.jpg", phash=p)]
+        missing, image_only, exif_only, phash_only = self._compare(db1, db2)
         assert missing == []
         assert exif_only == []
         assert phash_only == []  # resolved in Pass 1, never reaches Pass 3
@@ -247,7 +276,18 @@ class TestDbcErrors:
 # ── command output ────────────────────────────────────────────────────────────
 
 class TestDbcOutput:
-    def test_missing_file_appears_in_output(self, tmp_path):
+    def test_missing_file_appears_in_results_file(self, tmp_path):
+        f1 = tmp_path / "f1"
+        f1.mkdir()
+        f2 = tmp_path / "f2"
+        f2.mkdir()
+        make_db(f1, [("hash1", "/f1/a.jpg", None, None)])
+        make_db(f2, [("hash2", "/f2/missing.jpg", None, None)])
+        out = tmp_path / "results.txt"
+        invoke(f1, f2, output=str(out))
+        assert "missing.jpg" in out.read_text()
+
+    def test_missing_count_in_summary(self, tmp_path):
         f1 = tmp_path / "f1"
         f1.mkdir()
         f2 = tmp_path / "f2"
@@ -255,10 +295,10 @@ class TestDbcOutput:
         make_db(f1, [("hash1", "/f1/a.jpg", None, None)])
         make_db(f2, [("hash2", "/f2/missing.jpg", None, None)])
         result = invoke(f1, f2)
-        assert "missing.jpg" in result.output
-        assert "Total missing: 1" in result.output
+        assert "Missing:" in result.output
+        assert "Summary" in result.output
 
-    def test_hash_matched_file_not_in_missing(self, tmp_path):
+    def test_hash_matched_shows_zero_missing(self, tmp_path):
         f1 = tmp_path / "f1"
         f1.mkdir()
         f2 = tmp_path / "f2"
@@ -266,7 +306,8 @@ class TestDbcOutput:
         make_db(f1, [("hash1", "/f1/a.jpg", None, None)])
         make_db(f2, [("hash1", "/f2/a.jpg", None, None)])
         result = invoke(f1, f2)
-        assert "Missing" not in result.output
+        assert "Summary" in result.output
+        assert "Hash matches:" in result.output
 
     def test_all_hash_matched_success_message(self, tmp_path):
         f1 = tmp_path / "f1"
@@ -276,9 +317,9 @@ class TestDbcOutput:
         make_db(f1, [("hash1", "/f1/a.jpg", None, None)])
         make_db(f2, [("hash1", "/f2/a.jpg", None, None)])
         result = invoke(f1, f2)
-        assert "All files" in result.output
+        assert "Hash matches:" in result.output
 
-    def test_exif_match_not_in_missing_section(self, tmp_path):
+    def test_exif_match_shows_zero_missing(self, tmp_path):
         f1 = tmp_path / "f1"
         f1.mkdir()
         f2 = tmp_path / "f2"
@@ -286,9 +327,9 @@ class TestDbcOutput:
         make_db(f1, [("hash1", "/f1/a.jpg", "2024:06:21 08:15:00", "Canon EOS R5")])
         make_db(f2, [("hash2", "/f2/b.jpg", "2024:06:21 08:15:00", "Canon EOS R5")])
         result = invoke(f1, f2)
-        assert "Missing from" not in result.output
+        assert "EXIF matches:" in result.output
 
-    def test_exif_only_match_reported_in_output(self, tmp_path):
+    def test_exif_only_match_in_summary(self, tmp_path):
         f1 = tmp_path / "f1"
         f1.mkdir()
         f2 = tmp_path / "f2"
@@ -296,20 +337,10 @@ class TestDbcOutput:
         make_db(f1, [("hash1", "/f1/a.jpg", "2024:06:21 08:15:00", "Canon EOS R5")])
         make_db(f2, [("hash2", "/f2/b.jpg", "2024:06:21 08:15:00", "Canon EOS R5")])
         result = invoke(f1, f2)
-        assert "EXIF" in result.output
-        assert "/f2/b.jpg" in result.output
+        assert "EXIF matches:" in result.output
+        assert "/f2/b.jpg" not in result.output  # file names go to results file only
 
-    def test_all_accounted_message_with_exif(self, tmp_path):
-        f1 = tmp_path / "f1"
-        f1.mkdir()
-        f2 = tmp_path / "f2"
-        f2.mkdir()
-        make_db(f1, [("hash1", "/f1/a.jpg", "2024:06:21 08:15:00", "Canon EOS R5")])
-        make_db(f2, [("hash2", "/f2/b.jpg", "2024:06:21 08:15:00", "Canon EOS R5")])
-        result = invoke(f1, f2)
-        assert "accounted for" in result.output
-
-    def test_phash_match_reported_in_output(self, tmp_path):
+    def test_phash_match_in_summary(self, tmp_path):
         f1 = tmp_path / "f1"
         f1.mkdir()
         f2 = tmp_path / "f2"
@@ -318,20 +349,8 @@ class TestDbcOutput:
         make_db(f1, [("hash1", "/f1/a.jpg", None, None, None, None, None, None, None, None, p)])
         make_db(f2, [("hash2", "/f2/b.jpg", None, None, None, None, None, None, None, None, p)])
         result = invoke(f1, f2)
-        assert "pHash" in result.output
-        assert "/f2/b.jpg" in result.output
-
-    def test_all_accounted_message_with_phash(self, tmp_path):
-        f1 = tmp_path / "f1"
-        f1.mkdir()
-        f2 = tmp_path / "f2"
-        f2.mkdir()
-        p = ph("orange")
-        make_db(f1, [("hash1", "/f1/a.jpg", None, None, None, None, None, None, None, None, p)])
-        make_db(f2, [("hash2", "/f2/b.jpg", None, None, None, None, None, None, None, None, p)])
-        result = invoke(f1, f2)
-        assert "accounted for" in result.output
-        assert "pHash" in result.output
+        assert "pHash matches:" in result.output
+        assert "/f2/b.jpg" not in result.output  # file names go to results file only
 
     def test_empty_db2_success(self, tmp_path):
         f1 = tmp_path / "f1"
@@ -343,7 +362,7 @@ class TestDbcOutput:
         result = invoke(f1, f2)
         assert result.exit_code == 0
 
-    def test_output_file_written(self, tmp_path):
+    def test_output_file_has_filenames_not_summary(self, tmp_path):
         f1 = tmp_path / "f1"
         f1.mkdir()
         f2 = tmp_path / "f2"
@@ -354,11 +373,11 @@ class TestDbcOutput:
         invoke(f1, f2, output=str(out))
         assert out.exists()
         content = out.read_text()
-        assert "Summary" in content
-        assert "Missing" in content
-        assert "/f2/missing.jpg" in content
+        assert "Summary" not in content          # summary stays in terminal
+        assert "Hash matches:" not in content    # counts stay in terminal
+        assert "/f2/missing.jpg" in content      # file names go to results file
 
-    def test_output_file_summary_counts(self, tmp_path):
+    def test_stdout_has_summary_not_filenames(self, tmp_path):
         f1 = tmp_path / "f1"
         f1.mkdir()
         f2 = tmp_path / "f2"
@@ -368,20 +387,16 @@ class TestDbcOutput:
             ("hash2", "/f1/b.jpg", "2024:01:01 10:00:00", "Canon"),
         ])
         make_db(f2, [
-            ("hash1", "/f2/a.jpg", None, None),                        # hash match
-            ("hash3", "/f2/b.jpg", "2024:01:01 10:00:00", "Canon"),   # EXIF match
-            ("hash4", "/f2/c.jpg", None, None),                        # missing
+            ("hash1", "/f2/a.jpg", None, None),
+            ("hash3", "/f2/b.jpg", "2024:01:01 10:00:00", "Canon"),
+            ("hash4", "/f2/c.jpg", None, None),
         ])
-        out = tmp_path / "results.txt"
-        invoke(f1, f2, output=str(out))
-        content = out.read_text()
-        assert "Hash matches:" in content
-        assert "EXIF matches:" in content
-        assert "Missing:" in content
-        assert "Results written to" in CliRunner().invoke(
-            __import__("lk_cli.dbc", fromlist=["dbc"]).dbc,
-            [str(f1), str(f2), "--output", str(out)],
-        ).output
+        result = invoke(f1, f2)
+        assert "Summary" in result.output
+        assert "Hash matches:" in result.output
+        assert "EXIF matches:" in result.output
+        assert "Missing:" in result.output
+        assert "/f2/a.jpg" not in result.output  # filenames in file, not stdout
 
     def test_stdout_reports_output_path(self, tmp_path):
         f1 = tmp_path / "f1"
@@ -393,6 +408,306 @@ class TestDbcOutput:
         out = tmp_path / "results.txt"
         result = invoke(f1, f2, output=str(out))
         assert "Results written to" in result.output
+
+
+# ── dual-card detection ───────────────────────────────────────────────────────
+
+class TestDualCard:
+    def _compare(self, db1, db2, threshold=10):
+        from lk_cli.dbc import compare_records
+        return compare_records(db1, db2, threshold)
+
+    def test_exif_only_tuple_has_three_elements(self):
+        db1 = [ImageRecord("hash1", "/f1/a.jpg", "2024:01:01", "Canon")]
+        db2 = [ImageRecord("hash2", "/f2/b.jpg", "2024:01:01", "Canon")]
+        _, image_only, exif_only, _ = self._compare(db1, db2)
+        assert len(exif_only[0]) == 3
+
+    def test_different_card_numbers_sets_is_dual_true(self):
+        db1 = [ImageRecord("hash1", "/f1/a.jpg", "2024:01:01", "Nikon D7000",
+                            memory_card_number="1")]
+        db2 = [ImageRecord("hash2", "/f2/b.jpg", "2024:01:01", "Nikon D7000",
+                            memory_card_number="0")]
+        _, image_only, exif_only, _ = self._compare(db1, db2)
+        db2_name, db1_name, is_dual = exif_only[0]
+        assert is_dual is True
+
+    def test_same_card_number_sets_is_dual_false(self):
+        db1 = [ImageRecord("hash1", "/f1/a.jpg", "2024:01:01", "Nikon D7000",
+                            memory_card_number="0")]
+        db2 = [ImageRecord("hash2", "/f2/b.jpg", "2024:01:01", "Nikon D7000",
+                            memory_card_number="0")]
+        _, image_only, exif_only, _ = self._compare(db1, db2)
+        _, _, is_dual = exif_only[0]
+        assert is_dual is False
+
+    def test_missing_card_number_sets_is_dual_false(self):
+        db1 = [ImageRecord("hash1", "/f1/a.jpg", "2024:01:01", "Canon")]
+        db2 = [ImageRecord("hash2", "/f2/b.jpg", "2024:01:01", "Canon")]
+        _, image_only, exif_only, _ = self._compare(db1, db2)
+        _, _, is_dual = exif_only[0]
+        assert is_dual is False
+
+    def test_dual_card_annotation_in_results_file(self, tmp_path):
+        f1 = tmp_path / "f1"
+        f1.mkdir()
+        f2 = tmp_path / "f2"
+        f2.mkdir()
+        make_db(f1, [ImageRecord("h1", "/f1/a.jpg", "2024:01:01", "Nikon D7000",
+                                  memory_card_number="1")])
+        make_db(f2, [ImageRecord("h2", "/f2/a.jpg", "2024:01:01", "Nikon D7000",
+                                  memory_card_number="0")])
+        out = tmp_path / "results.txt"
+        invoke(f1, f2, output=str(out))
+        assert "dual-card" in out.read_text().lower()
+
+    def test_dual_card_annotation_in_results_file(self, tmp_path):
+        f1 = tmp_path / "f1"
+        f1.mkdir()
+        f2 = tmp_path / "f2"
+        f2.mkdir()
+        make_db(f1, [ImageRecord("h1", "/f1/a.jpg", "2024:01:01", "Nikon D7000",
+                                  memory_card_number="1")])
+        make_db(f2, [ImageRecord("h2", "/f2/a.jpg", "2024:01:01", "Nikon D7000",
+                                  memory_card_number="0")])
+        out = tmp_path / "results.txt"
+        invoke(f1, f2, output=str(out))
+        assert "dual-card" in out.read_text().lower()
+
+    def test_non_dual_exif_match_not_annotated(self, tmp_path):
+        f1 = tmp_path / "f1"
+        f1.mkdir()
+        f2 = tmp_path / "f2"
+        f2.mkdir()
+        make_db(f1, [ImageRecord("h1", "/f1/a.jpg", "2024:01:01", "Canon EOS R5")])
+        make_db(f2, [ImageRecord("h2", "/f2/a.jpg", "2024:01:01", "Canon EOS R5")])
+        result = invoke(f1, f2)
+        assert "dual-card" not in result.output.lower()
+
+
+# ── image hash comparison (Pass 2) ───────────────────────────────────────────
+
+class TestImageHashComparison:
+    def _compare(self, db1, db2, threshold=10):
+        from lk_cli.dbc import compare_records
+        return compare_records(db1, db2, threshold)
+
+    def test_same_image_hash_not_missing(self):
+        db1 = [ImageRecord("h1", "/f1/a.jpg", image_hash="sha256abc")]
+        db2 = [ImageRecord("h2", "/f2/a.jpg", image_hash="sha256abc")]
+        missing, image_only, _, _ = self._compare(db1, db2)
+        assert missing == []
+        assert len(image_only) == 1
+
+    def test_image_hash_match_records_both_names(self):
+        db1 = [ImageRecord("h1", "/f1/a.jpg", image_hash="sha256abc")]
+        db2 = [ImageRecord("h2", "/f2/a.jpg", image_hash="sha256abc")]
+        _, image_only, _, _ = self._compare(db1, db2)
+        assert image_only[0] == ("/f2/a.jpg", "/f1/a.jpg")
+
+    def test_different_image_hash_not_in_image_only(self):
+        db1 = [ImageRecord("h1", "/f1/a.jpg", image_hash="sha256aaa")]
+        db2 = [ImageRecord("h2", "/f2/a.jpg", image_hash="sha256bbb")]
+        missing, image_only, _, _ = self._compare(db1, db2)
+        assert image_only == []
+        assert "/f2/a.jpg" in missing
+
+    def test_null_image_hash_not_matched(self):
+        db1 = [ImageRecord("h1", "/f1/a.jpg", image_hash="sha256abc")]
+        db2 = [ImageRecord("h2", "/f2/a.jpg")]   # no image_hash
+        missing, image_only, _, _ = self._compare(db1, db2)
+        assert image_only == []
+        assert "/f2/a.jpg" in missing
+
+    def test_image_hash_takes_priority_over_exif(self):
+        db1 = [ImageRecord("h1", "/f1/a.jpg", "2024:01:01", "Canon",
+                            image_hash="sha256abc")]
+        db2 = [ImageRecord("h2", "/f2/a.jpg", "2024:01:01", "Canon",
+                            image_hash="sha256abc")]
+        _, image_only, exif_only, _ = self._compare(db1, db2)
+        assert len(image_only) == 1
+        assert exif_only == []
+
+    def test_image_hash_section_in_results_file(self, tmp_path):
+        from lk_cli.dbc import write_results
+        out = str(tmp_path / "r.txt")
+        image_only = [("/f2/a.jpg", "/f1/a.jpg")]
+        write_results(out, [], image_only, [], [])
+        content = open(out).read()
+        assert "image hash" in content.lower()
+        assert "/f2/a.jpg" in content
+
+    def test_image_hash_count_in_summary(self, tmp_path):
+        from lk_cli.dbc import write_results
+        out = str(tmp_path / "r.txt")
+        image_only = [("/f2/a.jpg", "/f1/a.jpg"), ("/f2/b.jpg", "/f1/b.jpg")]
+        write_results(out, [], image_only, [], [])
+        assert "2" in open(out).read()
+
+    def test_image_hash_match_in_cli_output(self, tmp_path):
+        f1 = tmp_path / "f1"
+        f1.mkdir()
+        f2 = tmp_path / "f2"
+        f2.mkdir()
+        make_db(f1, [ImageRecord("h1", "/f1/a.jpg", image_hash="sha256abc")])
+        make_db(f2, [ImageRecord("h2", "/f2/a.jpg", image_hash="sha256abc")])
+        result = invoke(f1, f2)
+        assert "image matches" in result.output.lower()
+
+
+# ── dual-card vs re-encoded section labels ────────────────────────────────────
+
+class TestExifSectionLabels:
+    def test_dual_card_entries_use_dual_card_header(self, tmp_path):
+        from lk_cli.dbc import write_results
+        out = str(tmp_path / "r.txt")
+        exif_only = [("/f2/a.NEF", "/f1/a.NEF", True)]
+        write_results(out, [], [], exif_only, [])
+        content = open(out).read()
+        assert "dual-card" in content.lower()
+        assert "re-encoded" not in content.lower()
+
+    def test_reencoded_entries_use_reencoded_header(self, tmp_path):
+        from lk_cli.dbc import write_results
+        out = str(tmp_path / "r.txt")
+        exif_only = [("/f2/a.jpg", "/f1/a.jpg", False)]
+        write_results(out, [], [], exif_only, [])
+        content = open(out).read()
+        assert "re-encoded" in content.lower()
+        assert "dual-card" not in content.lower()
+
+    def test_mixed_exif_shows_both_sections(self, tmp_path):
+        from lk_cli.dbc import write_results
+        out = str(tmp_path / "r.txt")
+        exif_only = [
+            ("/f2/a.NEF", "/f1/a.NEF", True),
+            ("/f2/b.jpg", "/f1/b.jpg", False),
+        ]
+        write_results(out, [], [], exif_only, [])
+        content = open(out).read()
+        assert "dual-card" in content.lower()
+        assert "re-encoded" in content.lower()
+
+    def test_dual_card_in_results_file(self, tmp_path):
+        f1 = tmp_path / "f1"
+        f1.mkdir()
+        f2 = tmp_path / "f2"
+        f2.mkdir()
+        make_db(f1, [ImageRecord("h1", "/f1/a.jpg", "2024:01:01", "Nikon D7000",
+                                  memory_card_number="1")])
+        make_db(f2, [ImageRecord("h2", "/f2/a.jpg", "2024:01:01", "Nikon D7000",
+                                  memory_card_number="0")])
+        out = tmp_path / "results.txt"
+        invoke(f1, f2, output=str(out))
+        assert "dual-card" in out.read_text().lower()
+
+    def test_reencoded_in_results_file(self, tmp_path):
+        f1 = tmp_path / "f1"
+        f1.mkdir()
+        f2 = tmp_path / "f2"
+        f2.mkdir()
+        make_db(f1, [ImageRecord("h1", "/f1/a.jpg", "2024:01:01", "Canon EOS R5")])
+        make_db(f2, [ImageRecord("h2", "/f2/a.jpg", "2024:01:01", "Canon EOS R5")])
+        out = tmp_path / "results.txt"
+        invoke(f1, f2, output=str(out))
+        assert "re-encoded" in out.read_text().lower()
+
+
+# ── write_results phash_threshold parameter ──────────────────────────────────
+
+class TestWriteResultsThreshold:
+    def test_custom_threshold_appears_in_output(self, tmp_path):
+        from lk_cli.dbc import write_results
+        out = str(tmp_path / "r.txt")
+        phash_only = [("/f2/a.jpg", "/f1/a.jpg", 2)]
+        write_results(out, [], [], [], phash_only, phash_threshold=3)
+        assert "≤ 3" in open(out).read()
+
+    def test_default_threshold_still_works(self, tmp_path):
+        from lk_cli.dbc import write_results, PHASH_THRESHOLD
+        out = str(tmp_path / "r.txt")
+        phash_only = [("/f2/a.jpg", "/f1/a.jpg", 2)]
+        write_results(out, [], [], [], phash_only)
+        assert f"≤ {PHASH_THRESHOLD}" in open(out).read()
+
+
+# ── version tracking ─────────────────────────────────────────────────────────
+
+class TestReadDbVersion:
+    def test_returns_version_when_present(self, tmp_path):
+        from lk_cli.dbc import read_db_version
+        db_path = str(tmp_path / DB_NAME)
+        conn = sqlite3.connect(db_path)
+        conn.execute("CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT)")
+        conn.execute("INSERT INTO meta VALUES (?, ?)", ("created_by_version", "0.9.4.6"))
+        conn.commit()
+        conn.close()
+        assert read_db_version(db_path) == "0.9.4.6"
+
+    def test_returns_none_when_meta_table_missing(self, tmp_path):
+        from lk_cli.dbc import read_db_version
+        db_path = str(tmp_path / DB_NAME)
+        conn = sqlite3.connect(db_path)
+        conn.execute("CREATE TABLE files (hash TEXT)")
+        conn.commit()
+        conn.close()
+        assert read_db_version(db_path) is None
+
+    def test_returns_none_when_key_absent(self, tmp_path):
+        from lk_cli.dbc import read_db_version
+        db_path = str(tmp_path / DB_NAME)
+        conn = sqlite3.connect(db_path)
+        conn.execute("CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT)")
+        conn.commit()
+        conn.close()
+        assert read_db_version(db_path) is None
+
+
+class TestVersionInResults:
+    def test_dbc_version_in_stdout(self, tmp_path):
+        f1 = tmp_path / "f1"
+        f1.mkdir()
+        f2 = tmp_path / "f2"
+        f2.mkdir()
+        make_db(f1, [("hash1", "/f1/a.jpg", None, None)])
+        make_db(f2, [("hash1", "/f2/a.jpg", None, None)])
+        from lk_cli.utils import get_version
+        result = invoke(f1, f2)
+        assert get_version() in result.output
+
+    def test_folder_versions_in_stdout(self, tmp_path):
+        from click.testing import CliRunner
+        from lk_cli.dbf import dbf as dbf_cmd
+        from lk_cli.utils import get_version
+        from PIL import Image
+        f1 = tmp_path / "f1"
+        f1.mkdir()
+        f2 = tmp_path / "f2"
+        f2.mkdir()
+        Image.new("RGB", (10, 10), color="red").save(str(f1 / "a.jpg"), "JPEG")
+        Image.new("RGB", (10, 10), color="red").save(str(f2 / "a.jpg"), "JPEG")
+        CliRunner().invoke(dbf_cmd, [str(f1)])
+        CliRunner().invoke(dbf_cmd, [str(f2)])
+        result = invoke(f1, f2)
+        assert get_version() in result.output
+
+    def test_versions_appear_in_full_run(self, tmp_path):
+        """After running dbf then dbc, results file must contain the version string."""
+        from click.testing import CliRunner
+        from lk_cli.dbf import dbf as dbf_cmd
+        from lk_cli.utils import get_version
+        from PIL import Image
+        f1 = tmp_path / "f1"
+        f1.mkdir()
+        f2 = tmp_path / "f2"
+        f2.mkdir()
+        Image.new("RGB", (10, 10), color="red").save(str(f1 / "a.jpg"), "JPEG")
+        Image.new("RGB", (10, 10), color="red").save(str(f2 / "a.jpg"), "JPEG")
+        CliRunner().invoke(dbf_cmd, [str(f1)])
+        CliRunner().invoke(dbf_cmd, [str(f2)])
+        out = tmp_path / "results.txt"
+        result = invoke(f1, f2, output=str(out))
+        assert get_version() in result.output  # version in stdout, not results file
 
 
 # ── multiprocessing ───────────────────────────────────────────────────────────

@@ -233,6 +233,102 @@ class TestCores:
             importlib.reload(utils_module)
 
 
+class TestCreateDbSchema:
+    def test_importable_from_utils(self):
+        from lk_cli.utils import create_db_schema
+        assert callable(create_db_schema)
+
+    def test_creates_meta_table(self, tmp_path):
+        import sqlite3
+        from lk_cli.utils import create_db_schema
+        conn = sqlite3.connect(str(tmp_path / "test.db"))
+        create_db_schema(conn)
+        tables = {row[0] for row in conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table'"
+        )}
+        conn.close()
+        assert "meta" in tables
+
+    def test_meta_table_has_key_value_columns(self, tmp_path):
+        import sqlite3
+        from lk_cli.utils import create_db_schema
+        conn = sqlite3.connect(str(tmp_path / "test.db"))
+        create_db_schema(conn)
+        cols = {row[1] for row in conn.execute("PRAGMA table_info(meta)")}
+        conn.close()
+        assert cols == {"key", "value"}
+
+    def test_drops_existing_meta_table(self, tmp_path):
+        import sqlite3
+        from lk_cli.utils import create_db_schema
+        conn = sqlite3.connect(str(tmp_path / "test.db"))
+        conn.execute("CREATE TABLE meta (old_col TEXT)")
+        create_db_schema(conn)
+        cols = {row[1] for row in conn.execute("PRAGMA table_info(meta)")}
+        conn.close()
+        assert "key" in cols
+        assert "old_col" not in cols
+
+    def test_creates_files_table(self, tmp_path):
+        import sqlite3
+        from lk_cli.utils import create_db_schema
+        conn = sqlite3.connect(str(tmp_path / "test.db"))
+        create_db_schema(conn)
+        cols = {row[1] for row in conn.execute("PRAGMA table_info(files)")}
+        conn.close()
+        assert cols == {
+            "hash", "name", "created_at", "camera_model", "subsec_time",
+            "image_width", "image_height", "file_size",
+            "image_unique_id", "camera_serial", "phash", "memory_card_number",
+            "image_hash",
+        }
+
+    def test_columns_match_image_record_fields(self, tmp_path):
+        import sqlite3
+        from lk_cli.utils import create_db_schema, ImageRecord
+        conn = sqlite3.connect(str(tmp_path / "test.db"))
+        create_db_schema(conn)
+        cols = {row[1] for row in conn.execute("PRAGMA table_info(files)")}
+        conn.close()
+        assert cols == set(ImageRecord._fields)
+
+    def test_drops_existing_table(self, tmp_path):
+        import sqlite3
+        from lk_cli.utils import create_db_schema
+        conn = sqlite3.connect(str(tmp_path / "test.db"))
+        conn.execute("CREATE TABLE files (old_col TEXT)")
+        create_db_schema(conn)
+        cols = {row[1] for row in conn.execute("PRAGMA table_info(files)")}
+        conn.close()
+        assert "old_col" not in cols
+        assert "hash" in cols
+
+    def test_dbf_uses_create_db_schema(self, tmp_path):
+        """dbf command must call create_db_schema rather than inline CREATE TABLE."""
+        from lk_cli.utils import create_db_schema
+        from unittest.mock import patch, call
+        import lk_cli.dbf as dbf_mod
+        assert hasattr(dbf_mod, "create_db_schema"), (
+            "dbf.py must import create_db_schema from utils"
+        )
+
+
+class TestDbName:
+    def test_db_name_importable_from_utils(self):
+        from lk_cli.utils import DB_NAME
+        assert DB_NAME == ".dbf.db"
+
+    def test_dbf_uses_db_name_from_utils(self):
+        import lk_cli.dbf as dbf_mod
+        from lk_cli.utils import DB_NAME
+        assert dbf_mod.DB_NAME == DB_NAME
+
+    def test_dbc_uses_db_name_from_utils(self):
+        import lk_cli.dbc as dbc_mod
+        from lk_cli.utils import DB_NAME
+        assert dbc_mod.DB_NAME == DB_NAME
+
+
 class TestSharedPool:
     def test_get_pool_exists(self):
         from lk_cli.utils import get_pool  # ImportError if missing

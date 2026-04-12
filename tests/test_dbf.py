@@ -66,7 +66,8 @@ class TestDbfCreation:
         assert cols == {
             "hash", "name", "created_at", "camera_model",
             "subsec_time", "image_width", "image_height", "file_size",
-            "image_unique_id", "camera_serial", "phash",
+            "image_unique_id", "camera_serial", "phash", "memory_card_number",
+            "image_hash",
         }
 
     def test_empty_folder_produces_no_db(self, tmp_path):
@@ -160,6 +161,38 @@ class TestExifData:
         ).fetchone()
         conn.close()
         assert row[0] is None
+
+
+class TestImageHashField:
+    def test_image_hash_stored_and_non_null(self, tmp_path):
+        path = make_plain_image(str(tmp_path / "a.jpg"))
+        invoke(tmp_path)
+        conn = open_db(str(tmp_path))
+        row = conn.execute(
+            "SELECT image_hash FROM files WHERE name = ?", (path,)
+        ).fetchone()
+        conn.close()
+        assert row[0] is not None
+        assert len(row[0]) == 64  # SHA-256 hex = 64 chars
+
+    def test_identical_content_same_image_hash(self, tmp_path):
+        img = Image.new("RGB", (64, 64), color="blue")
+        img.save(str(tmp_path / "a.jpg"), "JPEG")
+        img.save(str(tmp_path / "b.jpg"), "JPEG")
+        invoke(tmp_path)
+        conn = open_db(str(tmp_path))
+        hashes = [r[0] for r in conn.execute("SELECT image_hash FROM files ORDER BY name")]
+        conn.close()
+        assert hashes[0] == hashes[1]
+
+    def test_different_content_different_image_hash(self, tmp_path):
+        Image.new("RGB", (10, 10), color="red").save(str(tmp_path / "a.jpg"), "JPEG")
+        Image.new("RGB", (10, 10), color="blue").save(str(tmp_path / "b.jpg"), "JPEG")
+        invoke(tmp_path)
+        conn = open_db(str(tmp_path))
+        hashes = [r[0] for r in conn.execute("SELECT image_hash FROM files ORDER BY name")]
+        conn.close()
+        assert hashes[0] != hashes[1]
 
 
 class TestNewFields:
@@ -271,6 +304,122 @@ class TestHeicSupport:
         img.save(str(tmp_path / "photo.heic"), format="HEIF")
         result = invoke(tmp_path)
         assert "Skipping non-image" not in result.output
+
+
+class TestProcessImageExceptionHandling:
+    def test_except_clause_not_redundant(self):
+        """Exception must not appear alongside specific types in the except clause."""
+        import ast
+        import inspect
+        import textwrap
+        from lk_cli.dbf import process_image
+
+        source = textwrap.dedent(inspect.getsource(process_image))
+        tree = ast.parse(source)
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ExceptHandler):
+                if node.type and isinstance(node.type, ast.Tuple):
+                    names = [n.id for n in ast.walk(node.type) if isinstance(n, ast.Name)]
+                    assert "Exception" not in names, (
+                        f"Redundant except clause: 'Exception' listed alongside {names!r}. "
+                        "Use 'except Exception:' alone."
+                    )
+
+    def test_os_error_returns_not_image(self, tmp_path):
+        """An OSError from Image.open must yield is_image=False, not crash."""
+        from lk_cli.dbf import process_image
+        path = make_plain_image(str(tmp_path / "a.jpg"))
+        with patch("lk_cli.dbf.Image.open", side_effect=OSError("read error")):
+            result = process_image(path)
+        assert result[0] is False
+
+    def test_unidentified_image_error_returns_not_image(self, tmp_path):
+        """An UnidentifiedImageError must yield is_image=False, not crash."""
+        from PIL import UnidentifiedImageError
+        from lk_cli.dbf import process_image
+        path = make_plain_image(str(tmp_path / "a.jpg"))
+        with patch("lk_cli.dbf.Image.open", side_effect=UnidentifiedImageError("not an image")):
+            result = process_image(path)
+        assert result[0] is False
+
+    def test_phash_error_returns_not_image(self, tmp_path):
+        """Any exception from imagehash.phash must yield is_image=False, not crash."""
+        from lk_cli.dbf import process_image
+        path = make_plain_image(str(tmp_path / "a.jpg"))
+        with patch("lk_cli.dbf.imagehash.phash", side_effect=ValueError("phash failed")):
+            result = process_image(path)
+        assert result[0] is False
+
+
+def make_nikon_maker_note(card_number):
+    """Build minimal valid Nikon MakerNote bytes with the given card number (0-based raw).
+
+    Layout: b"Nikon\\x00" (6) + version (2) + padding (2) + TIFF header + IFD + file_info
+    The TIFF header starts at byte 10 (matching real NEF files).
+    file_info offset from tiff_start = 8 (ifd_off) + 2 (num) + 12 (entry) + 4 (next) = 26
+    """
+    import struct
+    e = ">"
+    file_info = b"0100" + struct.pack(f"{e}H", card_number) + b"\x00" * 10
+    tiff = (
+        b"MM"
+        + struct.pack(f"{e}H", 42)
+        + struct.pack(f"{e}I", 8)             # IFD at offset 8 from tiff_start
+        + struct.pack(f"{e}H", 1)             # 1 IFD entry
+        + struct.pack(f"{e}H", 0x00B8)        # tag: FileInfo (Nikon MakerNote 0x00B8)
+        + struct.pack(f"{e}H", 7)             # type: UNDEFINED
+        + struct.pack(f"{e}I", len(file_info))# count
+        + struct.pack(f"{e}I", 26)            # offset from tiff_start
+        + struct.pack(f"{e}I", 0)             # next IFD
+    )
+    return b"Nikon\x00\x02\x10\x00\x00" + tiff + file_info
+
+
+class TestVersionTracking:
+    def test_version_stored_in_meta(self, tmp_path):
+        from lk_cli.utils import get_version
+        make_plain_image(str(tmp_path / "a.jpg"))
+        invoke(tmp_path)
+        conn = open_db(str(tmp_path))
+        row = conn.execute(
+            "SELECT value FROM meta WHERE key = 'created_by_version'"
+        ).fetchone()
+        conn.close()
+        assert row is not None
+        assert row[0] == get_version()
+
+
+class TestNikonMemoryCard:
+    def test_returns_card_number_string(self):
+        from lk_cli.dbf import _nikon_memory_card
+        mn = make_nikon_maker_note(0)
+        assert _nikon_memory_card({37500: mn}) == "0"
+
+    def test_card_one_returns_one(self):
+        from lk_cli.dbf import _nikon_memory_card
+        mn = make_nikon_maker_note(1)
+        assert _nikon_memory_card({37500: mn}) == "1"
+
+    def test_non_nikon_returns_none(self):
+        from lk_cli.dbf import _nikon_memory_card
+        assert _nikon_memory_card({37500: b"FUJIFILM\x00\x00"}) is None
+
+    def test_no_makernote_returns_none(self):
+        from lk_cli.dbf import _nikon_memory_card
+        assert _nikon_memory_card({}) is None
+
+    def test_non_bytes_returns_none(self):
+        from lk_cli.dbf import _nikon_memory_card
+        assert _nikon_memory_card({37500: "not bytes"}) is None
+
+    def test_memory_card_stored_in_db(self, tmp_path):
+        """After dbf run, memory_card_number column must exist in the schema."""
+        make_plain_image(str(tmp_path / "a.jpg"))
+        invoke(tmp_path)
+        conn = open_db(str(tmp_path))
+        cols = {row[1] for row in conn.execute("PRAGMA table_info(files)")}
+        conn.close()
+        assert "memory_card_number" in cols
 
 
 class TestMultiprocessing:

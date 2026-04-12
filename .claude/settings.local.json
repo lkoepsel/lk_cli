@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(uv run:*)",
+      "Bash(uv --version)",
+      "Bash(uv add:*)",
+      "Bash(sqlite3 /Users/lkoepsel/Pictures/CopyPhotos_1/.dbf.db \"SELECT memory_card_number, COUNT\\(*\\) FROM files GROUP BY memory_card_number;\")",
+      "Bash(sqlite3 /Users/lkoepsel/Pictures/CopyPhotos_a/.dbf.db \"SELECT memory_card_number, COUNT\\(*\\) FROM files GROUP BY memory_card_number;\")",
+      "Bash(exiftool -v3 /Users/lkoepsel/Pictures/CopyPhotos_1/2022_07_13/_WLK6897.NEF)"
+    ]
+  }
+}
