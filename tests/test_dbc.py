@@ -96,7 +96,7 @@ class TestCompareRecords:
     def test_hash_match_not_missing(self):
         db1 = [ImageRecord("abc123", "/f1/photo.jpg", "2024:01:01 10:00:00", "Canon")]
         db2 = [ImageRecord("abc123", "/f2/photo.jpg", "2024:01:01 10:00:00", "Canon")]
-        missing, image_only, exif_only, phash_only = self._compare(db1, db2)
+        missing, image_only, exif_only, phash_only, _ = self._compare(db1, db2)
         assert missing == []
         assert exif_only == []
         assert phash_only == []
@@ -104,14 +104,14 @@ class TestCompareRecords:
     def test_different_hash_no_exif_is_missing(self):
         db1 = [ImageRecord("hash1", "/f1/a.jpg")]
         db2 = [ImageRecord("hash2", "/f2/b.jpg")]
-        missing, image_only, exif_only, _ = self._compare(db1, db2)
+        missing, image_only, exif_only, _, _ = self._compare(db1, db2)
         assert "/f2/b.jpg" in missing
         assert exif_only == []
 
     def test_exif_match_not_in_missing(self):
         db1 = [ImageRecord("hash1", "/f1/a.jpg", "2024:06:21 08:15:00", "Canon EOS R5")]
         db2 = [ImageRecord("hash2", "/f2/b.jpg", "2024:06:21 08:15:00", "Canon EOS R5")]
-        missing, image_only, exif_only, _ = self._compare(db1, db2)
+        missing, image_only, exif_only, _, _ = self._compare(db1, db2)
         assert missing == []
         assert len(exif_only) == 1
         assert exif_only[0][0] == "/f2/b.jpg"
@@ -119,33 +119,33 @@ class TestCompareRecords:
     def test_exif_match_records_db1_name(self):
         db1 = [ImageRecord("hash1", "/f1/original.jpg", "2024:06:21 08:15:00", "Canon EOS R5")]
         db2 = [ImageRecord("hash2", "/f2/copy.jpg", "2024:06:21 08:15:00", "Canon EOS R5")]
-        _, image_only, exif_only, _ = self._compare(db1, db2)
-        assert exif_only[0][:2] == ("/f2/copy.jpg", "/f1/original.jpg")
+        _, image_only, exif_only, _, _ = self._compare(db1, db2)
+        assert exif_only[0] == ("/f2/copy.jpg", "/f1/original.jpg")
 
     def test_null_created_at_not_exif_matched(self):
         db1 = [ImageRecord("hash1", "/f1/a.jpg", "2024:06:21 08:15:00", "Canon EOS R5")]
         db2 = [ImageRecord("hash2", "/f2/b.jpg", created_at=None, camera_model="Canon EOS R5")]
-        missing, image_only, exif_only, _ = self._compare(db1, db2)
+        missing, image_only, exif_only, _, _ = self._compare(db1, db2)
         assert "/f2/b.jpg" in missing
         assert exif_only == []
 
     def test_null_camera_model_not_exif_matched(self):
         db1 = [ImageRecord("hash1", "/f1/a.jpg", "2024:06:21 08:15:00", "Canon EOS R5")]
         db2 = [ImageRecord("hash2", "/f2/b.jpg", "2024:06:21 08:15:00", camera_model=None)]
-        missing, image_only, exif_only, _ = self._compare(db1, db2)
+        missing, image_only, exif_only, _, _ = self._compare(db1, db2)
         assert "/f2/b.jpg" in missing
         assert exif_only == []
 
     def test_empty_db1_all_missing(self):
         db1 = []
         db2 = [ImageRecord("hash1", "/f2/a.jpg"), ImageRecord("hash2", "/f2/b.jpg")]
-        missing, _, _, _ = self._compare(db1, db2)
+        missing, _, _, _, _ = self._compare(db1, db2)
         assert len(missing) == 2
 
     def test_empty_db2_nothing_missing(self):
         db1 = [ImageRecord("hash1", "/f1/a.jpg")]
         db2 = []
-        missing, image_only, exif_only, phash_only = self._compare(db1, db2)
+        missing, image_only, exif_only, phash_only, _ = self._compare(db1, db2)
         assert missing == []
         assert exif_only == []
         assert phash_only == []
@@ -160,7 +160,7 @@ class TestCompareRecords:
             ImageRecord("hash3", "/f2/b.jpg", "2024:01:01 10:00:00", "Sony A7"),        # exif match
             ImageRecord("hash4", "/f2/c.jpg"),                                          # missing
         ]
-        missing, image_only, exif_only, _ = self._compare(db1, db2)
+        missing, image_only, exif_only, _, _ = self._compare(db1, db2)
         assert missing == ["/f2/c.jpg"]
         assert len(exif_only) == 1
         assert exif_only[0][0] == "/f2/b.jpg"
@@ -171,14 +171,14 @@ class TestCompareRecords:
         # Same camera, same second, different sub-second → no EXIF match
         db1 = [ImageRecord("hash1", "/f1/a.jpg", "2024:01:01 10:00:00", "Canon", "05")]
         db2 = [ImageRecord("hash2", "/f2/b.jpg", "2024:01:01 10:00:00", "Canon", "06")]
-        missing, image_only, exif_only, _ = self._compare(db1, db2)
+        missing, image_only, exif_only, _, _ = self._compare(db1, db2)
         assert "/f2/b.jpg" in missing
         assert exif_only == []
 
     def test_subsec_match_when_same(self):
         db1 = [ImageRecord("hash1", "/f1/a.jpg", "2024:01:01 10:00:00", "Canon", "05")]
         db2 = [ImageRecord("hash2", "/f2/b.jpg", "2024:01:01 10:00:00", "Canon", "05")]
-        missing, image_only, exif_only, _ = self._compare(db1, db2)
+        missing, image_only, exif_only, _, _ = self._compare(db1, db2)
         assert missing == []
         assert len(exif_only) == 1
 
@@ -186,7 +186,7 @@ class TestCompareRecords:
         # Cameras without subsec: both None → still match on (model, time, None)
         db1 = [ImageRecord("hash1", "/f1/a.jpg", "2024:01:01 10:00:00", "Sony A7")]
         db2 = [ImageRecord("hash2", "/f2/b.jpg", "2024:01:01 10:00:00", "Sony A7")]
-        missing, image_only, exif_only, _ = self._compare(db1, db2)
+        missing, image_only, exif_only, _, _ = self._compare(db1, db2)
         assert missing == []
         assert len(exif_only) == 1
 
@@ -197,7 +197,7 @@ class TestCompareRecords:
         p = ph("red")
         db1 = [ImageRecord("hash1", "/f1/a.jpg", phash=p)]
         db2 = [ImageRecord("hash2", "/f2/b.jpg", phash=p)]
-        missing, image_only, exif_only, phash_only = self._compare(db1, db2)
+        missing, image_only, exif_only, phash_only, _ = self._compare(db1, db2)
         assert missing == []
         assert exif_only == []
         assert len(phash_only) == 1
@@ -207,7 +207,7 @@ class TestCompareRecords:
         p = ph("blue")
         db1 = [ImageRecord("hash1", "/f1/a.jpg", phash=p)]
         db2 = [ImageRecord("hash2", "/f2/b.jpg", phash=p)]
-        _, _, _, phash_only = self._compare(db1, db2)
+        _, _, _, phash_only, _ = self._compare(db1, db2)
         assert phash_only[0][2] == 0   # identical images: distance 0
 
     def test_phash_mismatch_is_missing(self):
@@ -216,7 +216,7 @@ class TestCompareRecords:
         p2 = ph("blue")
         db1 = [ImageRecord("hash1", "/f1/a.jpg", phash=p1)]
         db2 = [ImageRecord("hash2", "/f2/b.jpg", phash=p2)]
-        missing, _, _, phash_only = self._compare(db1, db2, threshold=5)
+        missing, _, _, phash_only, _ = self._compare(db1, db2, threshold=5)
         # red vs blue solid images typically differ significantly
         if phash_only:
             assert phash_only[0][2] <= 5
@@ -228,7 +228,7 @@ class TestCompareRecords:
         p = ph("green")
         db1 = [ImageRecord("hash1", "/f1/a.jpg", phash=p)]
         db2 = [ImageRecord("hash2", "/f2/b.jpg")]
-        missing, _, _, phash_only = self._compare(db1, db2)
+        missing, _, _, phash_only, _ = self._compare(db1, db2)
         assert "/f2/b.jpg" in missing
         assert phash_only == []
 
@@ -236,7 +236,7 @@ class TestCompareRecords:
         p = ph("red")
         db1 = [ImageRecord("hash1", "/f1/a.jpg", phash=p)]
         db2 = [ImageRecord("hash1", "/f2/b.jpg", phash=p)]
-        missing, image_only, exif_only, phash_only = self._compare(db1, db2)
+        missing, image_only, exif_only, phash_only, _ = self._compare(db1, db2)
         assert missing == []
         assert exif_only == []
         assert phash_only == []  # resolved in Pass 1, never reaches Pass 3
@@ -410,81 +410,6 @@ class TestDbcOutput:
         assert "Results written to" in result.output
 
 
-# ── dual-card detection ───────────────────────────────────────────────────────
-
-class TestDualCard:
-    def _compare(self, db1, db2, threshold=10):
-        from lk_cli.dbc import compare_records
-        return compare_records(db1, db2, threshold)
-
-    def test_exif_only_tuple_has_three_elements(self):
-        db1 = [ImageRecord("hash1", "/f1/a.jpg", "2024:01:01", "Canon")]
-        db2 = [ImageRecord("hash2", "/f2/b.jpg", "2024:01:01", "Canon")]
-        _, image_only, exif_only, _ = self._compare(db1, db2)
-        assert len(exif_only[0]) == 3
-
-    def test_different_card_numbers_sets_is_dual_true(self):
-        db1 = [ImageRecord("hash1", "/f1/a.jpg", "2024:01:01", "Nikon D7000",
-                            memory_card_number="1")]
-        db2 = [ImageRecord("hash2", "/f2/b.jpg", "2024:01:01", "Nikon D7000",
-                            memory_card_number="0")]
-        _, image_only, exif_only, _ = self._compare(db1, db2)
-        db2_name, db1_name, is_dual = exif_only[0]
-        assert is_dual is True
-
-    def test_same_card_number_sets_is_dual_false(self):
-        db1 = [ImageRecord("hash1", "/f1/a.jpg", "2024:01:01", "Nikon D7000",
-                            memory_card_number="0")]
-        db2 = [ImageRecord("hash2", "/f2/b.jpg", "2024:01:01", "Nikon D7000",
-                            memory_card_number="0")]
-        _, image_only, exif_only, _ = self._compare(db1, db2)
-        _, _, is_dual = exif_only[0]
-        assert is_dual is False
-
-    def test_missing_card_number_sets_is_dual_false(self):
-        db1 = [ImageRecord("hash1", "/f1/a.jpg", "2024:01:01", "Canon")]
-        db2 = [ImageRecord("hash2", "/f2/b.jpg", "2024:01:01", "Canon")]
-        _, image_only, exif_only, _ = self._compare(db1, db2)
-        _, _, is_dual = exif_only[0]
-        assert is_dual is False
-
-    def test_dual_card_annotation_in_results_file(self, tmp_path):
-        f1 = tmp_path / "f1"
-        f1.mkdir()
-        f2 = tmp_path / "f2"
-        f2.mkdir()
-        make_db(f1, [ImageRecord("h1", "/f1/a.jpg", "2024:01:01", "Nikon D7000",
-                                  memory_card_number="1")])
-        make_db(f2, [ImageRecord("h2", "/f2/a.jpg", "2024:01:01", "Nikon D7000",
-                                  memory_card_number="0")])
-        out = tmp_path / "results.txt"
-        invoke(f1, f2, output=str(out))
-        assert "dual-card" in out.read_text().lower()
-
-    def test_dual_card_annotation_in_results_file(self, tmp_path):
-        f1 = tmp_path / "f1"
-        f1.mkdir()
-        f2 = tmp_path / "f2"
-        f2.mkdir()
-        make_db(f1, [ImageRecord("h1", "/f1/a.jpg", "2024:01:01", "Nikon D7000",
-                                  memory_card_number="1")])
-        make_db(f2, [ImageRecord("h2", "/f2/a.jpg", "2024:01:01", "Nikon D7000",
-                                  memory_card_number="0")])
-        out = tmp_path / "results.txt"
-        invoke(f1, f2, output=str(out))
-        assert "dual-card" in out.read_text().lower()
-
-    def test_non_dual_exif_match_not_annotated(self, tmp_path):
-        f1 = tmp_path / "f1"
-        f1.mkdir()
-        f2 = tmp_path / "f2"
-        f2.mkdir()
-        make_db(f1, [ImageRecord("h1", "/f1/a.jpg", "2024:01:01", "Canon EOS R5")])
-        make_db(f2, [ImageRecord("h2", "/f2/a.jpg", "2024:01:01", "Canon EOS R5")])
-        result = invoke(f1, f2)
-        assert "dual-card" not in result.output.lower()
-
-
 # ── image hash comparison (Pass 2) ───────────────────────────────────────────
 
 class TestImageHashComparison:
@@ -495,27 +420,27 @@ class TestImageHashComparison:
     def test_same_image_hash_not_missing(self):
         db1 = [ImageRecord("h1", "/f1/a.jpg", image_hash="sha256abc")]
         db2 = [ImageRecord("h2", "/f2/a.jpg", image_hash="sha256abc")]
-        missing, image_only, _, _ = self._compare(db1, db2)
+        missing, image_only, _, _, _ = self._compare(db1, db2)
         assert missing == []
         assert len(image_only) == 1
 
     def test_image_hash_match_records_both_names(self):
         db1 = [ImageRecord("h1", "/f1/a.jpg", image_hash="sha256abc")]
         db2 = [ImageRecord("h2", "/f2/a.jpg", image_hash="sha256abc")]
-        _, image_only, _, _ = self._compare(db1, db2)
+        _, image_only, _, _, _ = self._compare(db1, db2)
         assert image_only[0] == ("/f2/a.jpg", "/f1/a.jpg")
 
     def test_different_image_hash_not_in_image_only(self):
         db1 = [ImageRecord("h1", "/f1/a.jpg", image_hash="sha256aaa")]
         db2 = [ImageRecord("h2", "/f2/a.jpg", image_hash="sha256bbb")]
-        missing, image_only, _, _ = self._compare(db1, db2)
+        missing, image_only, _, _, _ = self._compare(db1, db2)
         assert image_only == []
         assert "/f2/a.jpg" in missing
 
     def test_null_image_hash_not_matched(self):
         db1 = [ImageRecord("h1", "/f1/a.jpg", image_hash="sha256abc")]
         db2 = [ImageRecord("h2", "/f2/a.jpg")]   # no image_hash
-        missing, image_only, _, _ = self._compare(db1, db2)
+        missing, image_only, _, _, _ = self._compare(db1, db2)
         assert image_only == []
         assert "/f2/a.jpg" in missing
 
@@ -524,7 +449,7 @@ class TestImageHashComparison:
                             image_hash="sha256abc")]
         db2 = [ImageRecord("h2", "/f2/a.jpg", "2024:01:01", "Canon",
                             image_hash="sha256abc")]
-        _, image_only, exif_only, _ = self._compare(db1, db2)
+        _, image_only, exif_only, _, _ = self._compare(db1, db2)
         assert len(image_only) == 1
         assert exif_only == []
 
@@ -555,51 +480,16 @@ class TestImageHashComparison:
         assert "image matches" in result.output.lower()
 
 
-# ── dual-card vs re-encoded section labels ────────────────────────────────────
+# ── EXIF section label ────────────────────────────────────────────────────────
 
 class TestExifSectionLabels:
-    def test_dual_card_entries_use_dual_card_header(self, tmp_path):
+    def test_exif_entries_use_reencoded_header(self, tmp_path):
         from lk_cli.dbc import write_results
         out = str(tmp_path / "r.txt")
-        exif_only = [("/f2/a.NEF", "/f1/a.NEF", True)]
-        write_results(out, [], [], exif_only, [])
-        content = open(out).read()
-        assert "dual-card" in content.lower()
-        assert "re-encoded" not in content.lower()
-
-    def test_reencoded_entries_use_reencoded_header(self, tmp_path):
-        from lk_cli.dbc import write_results
-        out = str(tmp_path / "r.txt")
-        exif_only = [("/f2/a.jpg", "/f1/a.jpg", False)]
+        exif_only = [("/f2/a.jpg", "/f1/a.jpg")]
         write_results(out, [], [], exif_only, [])
         content = open(out).read()
         assert "re-encoded" in content.lower()
-        assert "dual-card" not in content.lower()
-
-    def test_mixed_exif_shows_both_sections(self, tmp_path):
-        from lk_cli.dbc import write_results
-        out = str(tmp_path / "r.txt")
-        exif_only = [
-            ("/f2/a.NEF", "/f1/a.NEF", True),
-            ("/f2/b.jpg", "/f1/b.jpg", False),
-        ]
-        write_results(out, [], [], exif_only, [])
-        content = open(out).read()
-        assert "dual-card" in content.lower()
-        assert "re-encoded" in content.lower()
-
-    def test_dual_card_in_results_file(self, tmp_path):
-        f1 = tmp_path / "f1"
-        f1.mkdir()
-        f2 = tmp_path / "f2"
-        f2.mkdir()
-        make_db(f1, [ImageRecord("h1", "/f1/a.jpg", "2024:01:01", "Nikon D7000",
-                                  memory_card_number="1")])
-        make_db(f2, [ImageRecord("h2", "/f2/a.jpg", "2024:01:01", "Nikon D7000",
-                                  memory_card_number="0")])
-        out = tmp_path / "results.txt"
-        invoke(f1, f2, output=str(out))
-        assert "dual-card" in out.read_text().lower()
 
     def test_reencoded_in_results_file(self, tmp_path):
         f1 = tmp_path / "f1"

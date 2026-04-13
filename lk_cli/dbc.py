@@ -45,7 +45,7 @@ def compare_records(db1_records, db2_records, phash_threshold=PHASH_THRESHOLD):
 
     Pass 1 — Hash match: identical byte-for-byte copy (handles moves/renames).
     Pass 2 — Image hash match: same decoded pixel content, metadata differs.
-              Reliably identifies dual-card copies and format conversions.
+              Catches format conversions and copies with differing metadata.
     Pass 3 — EXIF match: same (camera_model, created_at, subsec_time).
               Sub-second precision prevents false matches between burst shots.
     Pass 4 — pHash match: perceptual hash within Hamming distance threshold.
@@ -54,10 +54,9 @@ def compare_records(db1_records, db2_records, phash_threshold=PHASH_THRESHOLD):
     Returns:
         missing    — names from db2 not found in db1 by any method
         image_only — (db2_name, db1_name) pairs matched only by image hash
-        exif_only  — (db2_name, db1_name, is_dual_card) triples matched only by EXIF.
-                     is_dual_card is True when both records carry a memory_card_number
-                     and the numbers differ (Nikon dual-slot copy).
+        exif_only  — (db2_name, db1_name) pairs matched only by EXIF
         phash_only — (db2_name, db1_name, distance) pairs matched only by pHash
+        hash_only  — names from db2 matched by exact file hash (Pass 1)
     """
     # Pass 1: exact file hash
     db1_hashes = {row.hash for row in db1_records if row.hash}
@@ -69,13 +68,12 @@ def compare_records(db1_records, db2_records, phash_threshold=PHASH_THRESHOLD):
             db1_image_hashes.setdefault(row.image_hash, row.name)
 
     # Pass 3: EXIF identity — camera model + capture time + sub-second
-    # Store (name, memory_card_number) so we can detect dual-card copies.
     db1_exif = {}
     for row in db1_records:
         if row.camera_model and row.created_at:
             db1_exif.setdefault(
                 (row.camera_model, row.created_at, row.subsec_time),
-                (row.name, row.memory_card_number),
+                row.name,
             )
 
     # Pass 4: perceptual hash
@@ -89,9 +87,11 @@ def compare_records(db1_records, db2_records, phash_threshold=PHASH_THRESHOLD):
     image_only = []
     exif_only = []
     phash_only = []
+    hash_only = []
 
     for row in db2_records:
         if row.hash in db1_hashes:
+            hash_only.append(row.name)
             continue
 
         if row.image_hash and row.image_hash in db1_image_hashes:
@@ -101,13 +101,7 @@ def compare_records(db1_records, db2_records, phash_threshold=PHASH_THRESHOLD):
         if row.camera_model and row.created_at:
             key = (row.camera_model, row.created_at, row.subsec_time)
             if key in db1_exif:
-                db1_name, db1_card = db1_exif[key]
-                is_dual = bool(
-                    row.memory_card_number is not None
-                    and db1_card is not None
-                    and row.memory_card_number != db1_card
-                )
-                exif_only.append((row.name, db1_name, is_dual))
+                exif_only.append((row.name, db1_exif[key]))
                 continue
 
         if row.phash:
@@ -123,17 +117,23 @@ def compare_records(db1_records, db2_records, phash_threshold=PHASH_THRESHOLD):
 
         missing.append(row.name)
 
-    return missing, image_only, exif_only, phash_only
+    return missing, image_only, exif_only, phash_only, hash_only
 
 
 def write_results(output_path, missing, image_only, exif_only, phash_only,
+                  hash_only=None, folder1=None, folder2=None,
                   phash_threshold=PHASH_THRESHOLD):
     """Write categorised file lists to output_path. Returns the resolved path."""
     lines = []
 
-    if missing:
-        lines.append(f"Missing: {len(missing)}")
-        for name in sorted(missing):
+    if folder1 is not None or folder2 is not None:
+        lines.append(f"Folder1 (reference): {folder1 or ''}")
+        lines.append(f"Folder2 (checked):   {folder2 or ''}")
+        lines.append("")
+
+    if hash_only:
+        lines.append(f"Hash matches: {len(hash_only)}")
+        for name in sorted(hash_only):
             lines.append(f"  {name}")
         lines.append("")
 
@@ -143,18 +143,9 @@ def write_results(output_path, missing, image_only, exif_only, phash_only,
             lines.append(f"  {db2_name}")
         lines.append("")
 
-    dual_card = [(n, d) for n, d, f in exif_only if f]
-    reencoded = [(n, d) for n, d, f in exif_only if not f]
-
-    if dual_card:
-        lines.append(f"Dual-card copies: {len(dual_card)}")
-        for db2_name, _ in sorted(dual_card):
-            lines.append(f"  {db2_name}")
-        lines.append("")
-
-    if reencoded:
-        lines.append(f"EXIF matches (re-encoded/edited): {len(reencoded)}")
-        for db2_name, _ in sorted(reencoded):
+    if exif_only:
+        lines.append(f"EXIF matches (re-encoded/edited): {len(exif_only)}")
+        for db2_name, _ in sorted(exif_only):
             lines.append(f"  {db2_name}")
         lines.append("")
 
@@ -162,6 +153,12 @@ def write_results(output_path, missing, image_only, exif_only, phash_only,
         lines.append(f"pHash matches (Hamming distance ≤ {phash_threshold}): {len(phash_only)}")
         for db2_name, _, dist in sorted(phash_only):
             lines.append(f"  {db2_name}  [distance: {dist}]")
+        lines.append("")
+
+    if missing:
+        lines.append(f"Missing (not found by hash, EXIF, or pHash): {len(missing)}")
+        for name in sorted(missing):
+            lines.append(f"  {name}")
         lines.append("")
 
     resolved = os.path.expanduser(output_path)
@@ -218,10 +215,9 @@ def dbc(folder1, folder2, output):
         click.echo(f"Error: {e}", err=True)
         raise SystemExit(1)
 
-    missing, image_only, exif_only, phash_only = compare_records(db1_records, db2_records)
-
-    hash_matched = (len(db2_records) - len(missing) - len(image_only)
-                    - len(exif_only) - len(phash_only))
+    missing, image_only, exif_only, phash_only, hash_only = compare_records(
+        db1_records, db2_records
+    )
 
     # ── terminal: summary only ────────────────────────────────────────────────
     if dbc_version:
@@ -235,16 +231,21 @@ def dbc(folder1, folder2, output):
     click.echo("")
     click.echo("Summary")
     click.echo("-" * 50)
-    click.echo(f"  Hash matches:   {hash_matched:5d}  (exact byte-for-byte copies)")
+    click.echo(f"  Total in folder1: {len(db1_records)}")
+    click.echo(f"  Total in folder2: {len(db2_records)}")
+    if len(db2_records) > len(db1_records):
+        excess = len(db2_records) - len(db1_records)
+        click.echo(f"  Note: folder2 (checked) has {excess} more photo(s) than folder1 (reference)")
+    click.echo(f"  Hash matches:   {len(hash_only):5d}  (exact byte-for-byte copies)")
     click.echo(f"  Image matches:  {len(image_only):5d}  (same pixels, metadata differs)")
     click.echo(f"  EXIF matches:   {len(exif_only):5d}  (same camera+time, different pixels)")
     click.echo(f"  pHash matches:  {len(phash_only):5d}  (visually similar, Hamming distance ≤ {PHASH_THRESHOLD})")
-    click.echo(f"  Missing:        {len(missing):5d}  (not found by any method)")
-    click.echo(f"  Total in folder2: {len(db2_records)}")
+    click.echo(f"  Missing:        {len(missing):5d}  (in folder2, not found in folder1 by any method)")
 
     try:
         out_path = write_results(
             output, missing, image_only, exif_only, phash_only,
+            hash_only=hash_only, folder1=folder1, folder2=folder2,
             phash_threshold=PHASH_THRESHOLD,
         )
         click.echo(f"Results written to {out_path}")
