@@ -6,7 +6,22 @@
       "Bash(uv add:*)",
       "Bash(sqlite3 /Users/lkoepsel/Pictures/CopyPhotos_1/.dbf.db \"SELECT memory_card_number, COUNT\\(*\\) FROM files GROUP BY memory_card_number;\")",
       "Bash(sqlite3 /Users/lkoepsel/Pictures/CopyPhotos_a/.dbf.db \"SELECT memory_card_number, COUNT\\(*\\) FROM files GROUP BY memory_card_number;\")",
-      "Bash(exiftool -v3 /Users/lkoepsel/Pictures/CopyPhotos_1/2022_07_13/_WLK6897.NEF)"
+      "Bash(exiftool -v3 /Users/lkoepsel/Pictures/CopyPhotos_1/2022_07_13/_WLK6897.NEF)",
+      "Bash(tio --version)",
+      "Read(//home/lkoepsel/.config/tio/**)",
+      "Read(//home/lkoepsel/**)",
+      "Bash(tio --help)",
+      "Bash(tio --list)",
+      "Bash(python3 -c \"import serial; print\\(serial.__version__\\)\")",
+      "Bash(python3 -m pytest tests/test_fu.py -q)",
+      "Bash(fish -c \"uv run pytest tests/test_fu.py -q 2>&1\")",
+      "Bash(command -v uv)",
+      "Read(//opt/**)",
+      "Bash(python3.14 -m pytest --version)",
+      "Bash(python3.12 -m pytest --version)",
+      "Bash(python3.14 -c \"import sys; print\\(sys.version\\)\")",
+      "Bash(python3.14 -c \"import pytest; print\\(pytest.__version__\\)\")",
+      "Bash(uv tool *)"
     ]
   }
 }
