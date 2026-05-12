@@ -285,6 +285,90 @@ class TestFuOpensCloses:
         assert _closes_definition("    LED tog") is False
 
 
+class TestFuPipeMode:
+    """--pipe writes Forth lines to stdout for use with tio ctrl-t R."""
+
+    BLINK = (
+        "\\ comment\n"
+        ": blink ( ms -- )\n"
+        "    LED out\n"
+        "    begin\n"
+        "        LED tog\n"
+        "        dup ms\n"
+        "    again\n"
+        ";\n"
+        "500 blink\n"
+    )
+
+    def _run_pipe(self, tmp_path, content=None, extra_args=None):
+        from lk_cli.fu import fu
+        src = tmp_path / "blink.fs"
+        src.write_text(self.BLINK if content is None else content)
+        args = ["--pipe", str(src)] + (extra_args or [])
+        with patch("lk_cli.fu.time.sleep"):
+            result = CliRunner().invoke(fu, args)
+        return result
+
+    def test_does_not_open_serial_port(self, tmp_path):
+        with patch("lk_cli.fu.serial.Serial") as mock_cls:
+            self._run_pipe(tmp_path)
+        mock_cls.assert_not_called()
+
+    def test_exits_zero(self, tmp_path):
+        result = self._run_pipe(tmp_path)
+        assert result.exit_code == 0
+
+    def test_output_contains_code_lines(self, tmp_path):
+        result = self._run_pipe(tmp_path)
+        assert ": blink ( ms -- )" in result.output
+        assert "LED out" in result.output
+        assert "500 blink" in result.output
+
+    def test_output_excludes_comments_and_blanks(self, tmp_path):
+        result = self._run_pipe(tmp_path)
+        assert "\\ comment" not in result.output
+
+    def test_lines_end_with_bare_cr(self, tmp_path):
+        # tio merges stdout+stderr, so we use bare \r (nl=False) with no \n.
+        # Spy on click.echo to verify the terminator is \r, not \r\n.
+        from lk_cli.fu import fu
+        import click as click_mod
+        src = tmp_path / "t.fs"
+        src.write_text(": foo ;\n")
+        echo_msgs = []
+        real_echo = click_mod.echo
+        def spy(msg="", **kw):
+            echo_msgs.append((msg, kw))
+            real_echo(msg, **kw)
+        with patch("lk_cli.fu.click.echo", side_effect=spy):
+            with patch("lk_cli.fu.time.sleep"):
+                CliRunner().invoke(fu, ["--pipe", str(src)])
+        forth_calls = [(m, kw) for m, kw in echo_msgs if isinstance(m, str) and m.endswith("\r")]
+        assert forth_calls, "No call ending with \\r found"
+        assert all(kw.get("nl") is False for _, kw in forth_calls)
+
+    def test_delay_applied_to_all_lines(self, tmp_path):
+        from lk_cli.fu import fu
+        src = tmp_path / "t.fs"
+        src.write_text(": foo ;\n42 .\n")
+        sleep_calls = []
+        with patch("lk_cli.fu.time.sleep", side_effect=sleep_calls.append):
+            CliRunner().invoke(fu, ["--pipe", str(src)])
+        # Both lines get a delay (no serial feedback to wait for)
+        assert len(sleep_calls) == 2
+
+    def test_empty_file_exits_zero_with_no_output(self, tmp_path):
+        result = self._run_pipe(tmp_path, content="")
+        assert result.exit_code == 0
+        assert result.output == ""
+
+    def test_no_status_message_in_output(self, tmp_path):
+        # Nothing except Forth lines must reach the device.
+        result = self._run_pipe(tmp_path)
+        assert "Uploaded" not in result.output
+        assert "lines" not in result.output
+
+
 class TestFuIsBlankOrComment:
     def test_blank_line(self):
         from lk_cli.fu import is_blank_or_comment
