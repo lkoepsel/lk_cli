@@ -25,7 +25,6 @@ dependencies = [
     "pillow-heif>=0.18",
     "send2trash>=1.8",
     "xxhash>=3.5.0",
-    "pyserial>=3.5",
 ]
 urls = { "Homepage" = "https://github.com/lkoepsel/lk_cli" }
 
@@ -44,7 +43,6 @@ dbf = "lk_cli.dbf:dbf"
 dbc = "lk_cli.dbc:dbc"
 dbi = "lk_cli.dbi:dbi"
 dbm = "lk_cli.dbm:dbm"
-fu = "lk_cli.fu:fu"
 lk_cli = "lk_cli.lk_cli:lk_cli"
 
 [tool.setuptools]
